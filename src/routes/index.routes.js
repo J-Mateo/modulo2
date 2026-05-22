@@ -1,4 +1,5 @@
 import express from 'express';
+import productsRoutes from './products.routes.js';
 
 const router = express.Router();
 
@@ -10,5 +11,7 @@ router.get('/health', (req, res) => {
     },
   });
 });
+
+router.use('/api', productsRoutes);
 
 export default router;
