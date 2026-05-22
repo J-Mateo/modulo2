@@ -1,8 +1,14 @@
 import express from 'express';
-import { productsController } from './controllers/products.controller.js'
 
 const router = express.Router();
 
-
+router.get('/health', (req, res) => {
+  res.json({
+    ok: true,
+    data: {
+      status: 'up',
+    },
+  });
+});
 
 export default router;

@@ -1,10 +1,11 @@
-import express from 'express'
+import express from 'express';
+import indexRoutes from './routes/index.routes.js';
 
-const app = express()
+const app = express();
 
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.use(indexRoutes)
+app.use(indexRoutes);
 
-export default app
+export default app;
