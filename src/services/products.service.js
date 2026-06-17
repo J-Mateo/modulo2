@@ -1,52 +1,43 @@
-import { products } from '../db/products.js';
+import prisma from '../config/prismaClient.js';
 
-const getProducts = () => products;
-
+const getProducts = () => {
+  return prisma.product.findMany();
+};
 
 const getProductById = (id) => {
-  return products.find((product) => product.id === id) || null;
+  return prisma.product.findUnique({
+    where: { id: Number(id) },
+  });
 };
 
 const createProduct = (data) => {
-  const newProduct = {
-    id: Date.now(),
-    ...data,
-    createdAt: new Date().toISOString(),
-  };
-
-  products.push(newProduct);
-  return newProduct;
+  return prisma.product.create({
+    data: {
+      name: data.name,
+      description: data.description,
+      price: Number(data.price),
+      stock: Number(data.stock),
+      imageUrl: data.imageUrl,
+    },
+  });
 };
 
 const updateProduct = (id, data) => {
-  const product = getProductById(id);
-
-  if (!product) {
-    return null;
-  }
-
-  const updatedProduct = {
-    ...product,
-    ...data,
-    updatedAt: new Date().toISOString(),
-  };
-
-  Object.assign(product, updatedProduct);
-
-  return product;
+  return prisma.product.update({
+    where: { id: Number(id) },
+    data: {
+      ...data,
+      price: data.price !== undefined ? Number(data.price) : undefined,
+      stock: data.stock !== undefined ? Number(data.stock) : undefined,
+    },
+  });
 };
 
 const deleteProduct = (id) => {
-  const productIndex = products.findIndex((product) => product.id === id);
-
-  if (productIndex === -1) {
-    return null;
-  }
-
-  const deletedProduct = products.splice(productIndex, 1)[0];
-  return deletedProduct;
+  return prisma.product.delete({
+    where: { id: Number(id) },
+  });
 };
-
 
 export const productsService = {
   getProducts,
@@ -55,3 +46,4 @@ export const productsService = {
   updateProduct,
   deleteProduct,
 };
+
