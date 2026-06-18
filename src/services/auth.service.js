@@ -43,13 +43,13 @@ const login = async ({ email, password }) => {
 }
 
   if (!user) {
-    throw new AppError(ErrorSelector.UNAUTHORIZED);
+    throw new AppError(ErrorSelector.UNAUTHORIZED, 'Invalid email or password');
   }
 
   const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
   if (!isValidPassword) {
-    throw new AppError(ErrorSelector.UNAUTHORIZED);
+    throw new AppError(ErrorSelector.UNAUTHORIZED, 'Invalid email or password');
   }
 
   const token = generateToken({
