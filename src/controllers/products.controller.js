@@ -1,6 +1,6 @@
 import { productsService } from '../services/products.service.js';
-import { AppError } from '../misc/AppError.js';
-import { ErrorSelector } from '../misc/errors.js';
+import { AppError } from '../utils/AppError.js';
+import { ErrorSelector } from '../utils/errors.js';
 
 const getProducts = async (req, res, next) => {
   try {

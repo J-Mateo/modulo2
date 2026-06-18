@@ -1,4 +1,4 @@
-import { errors, ErrorSelector } from '../misc/errors.js';
+import { errors, ErrorSelector } from '../utils/errors.js';
 
 export const errorHandler = (err, req, res, next) => {
   if (err.type && errors[err.type]) {
