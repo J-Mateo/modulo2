@@ -1,19 +1,16 @@
-import { errors, ErrorSelector } from '../utils/errors.js';
+import { ErrorSelector, errors } from '../utils/errors.js';
 
 export const errorHandler = (err, req, res, next) => {
-  if (err.type && errors[err.type]) {
-    return res.status(errors[err.type].statusCode).json({
-      ok: false,
-      error: {
-        message: errors[err.type].message,
-      },
-    });
-  }
+  const statusCode =
+    err.statusCode || errors[ErrorSelector.INTERNAL_ERROR].statusCode;
 
-  return res.status(500).json({
+  const message =
+    err.message || errors[ErrorSelector.INTERNAL_ERROR].message;
+
+  return res.status(statusCode).json({
     ok: false,
     error: {
-      message: errors[ErrorSelector.INTERNAL_ERROR].message,
+      message,
     },
   });
 };
