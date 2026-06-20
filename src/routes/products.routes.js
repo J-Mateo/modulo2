@@ -6,11 +6,11 @@ import { adminLogger } from '../middlewares/adminLogger.js';
 
 const router = express.Router();
 
-router.get('/products', productsController.getProducts);
-router.get('/products/:id', productsController.getProductById);
+router.get('/', productsController.getProducts);
+router.get('/:id', productsController.getProductById);
 
 router.post(
-  '/products',
+  '/',
   authenticate,
   requireRole('ADMIN'),
   adminLogger('CREATE_PRODUCT', 'product'),
@@ -18,7 +18,7 @@ router.post(
 );
 
 router.put(
-  '/products/:id',
+  '/:id',
   authenticate,
   requireRole('ADMIN'),
   adminLogger('UPDATE_PRODUCT', 'product'),
@@ -26,7 +26,7 @@ router.put(
 );
 
 router.delete(
-  '/products/:id',
+  '/:id',
   authenticate,
   requireRole('ADMIN'),
   adminLogger('DELETE_PRODUCT', 'product'),

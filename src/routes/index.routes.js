@@ -17,13 +17,16 @@ router.get('/health', (req, res) => {
   });
 });
 
-router.use('/api', productsRoutes);
-router.use('/api', reviewsRoutes);
-router.use('/api/auth', authRoutes);
-router.use('/api/users', usersRoutes);
-router.use('/api', wishlistRoutes);
-router.use('/api/cart', cartRoutes);
+const apiRouter = express.Router();
+
+apiRouter.use('/products', productsRoutes);              
+apiRouter.use('/products/:productId/reviews', reviewsRoutes); 
+apiRouter.use('/auth', authRoutes);                       
+apiRouter.use('/users', usersRoutes);                    
+apiRouter.use('/wishlist', wishlistRoutes);              
+apiRouter.use('/cart', cartRoutes);                       
 
 
+router.use('/api', apiRouter);
 
 export default router;

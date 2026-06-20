@@ -5,8 +5,8 @@ import { authenticate } from '../middlewares/authenticate.js';
 
 const router = express.Router();
 
-router.get('/wishlist', authenticate, wishlistController.getWishlist);
+router.get('/', authenticate, wishlistController.getWishlist);
 
-router.post('/wishlist/:productId', authenticate, wishlistController.toggleProduct);
+router.post('/:productId', authenticate, wishlistController.toggleProduct);
 
 export default router;

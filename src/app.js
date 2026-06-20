@@ -6,12 +6,17 @@ import rateLimit from 'express-rate-limit';
 import indexRoutes from './routes/index.routes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { notFound } from './middlewares/notFound.js';
+import env from './config/env.js';
 
 const app = express();
 
 app.use(helmet());
 
-app.use(cors());
+app.use(
+  cors({
+    origin: env.FRONTEND_URL,
+  })
+);
 
 app.use(
   rateLimit({
