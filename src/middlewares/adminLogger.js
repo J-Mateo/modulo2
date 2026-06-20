@@ -23,4 +23,4 @@ export const adminLogger = (action, resource) => {
 
     next();
   };
-};
+};0

@@ -4,6 +4,7 @@ import authRoutes from './auth.routes.js';
 import usersRoutes from './users.routes.js';
 import reviewsRoutes from './reviews.routes.js';
 import wishlistRoutes from './wishlist.routes.js';
+import cartRoutes from './cart.routes.js';
 
 const router = express.Router();
 
@@ -21,7 +22,8 @@ router.use('/api', reviewsRoutes);
 router.use('/api/auth', authRoutes);
 router.use('/api/users', usersRoutes);
 router.use('/api', wishlistRoutes);
-//router.use('/api', cartRoutes);
-//router.use('/api', checkoutRoutes);
+router.use('/api/cart', cartRoutes);
+
+
 
 export default router;
