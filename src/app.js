@@ -2,6 +2,8 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+import swaggerDocument from '../swagger.json' with { type: 'json' };
 
 import indexRoutes from './routes/index.routes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
@@ -27,6 +29,12 @@ app.use(
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(
+  '/api/docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerDocument)
+);
 
 app.use(indexRoutes);
 

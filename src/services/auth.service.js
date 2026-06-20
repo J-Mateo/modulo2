@@ -5,12 +5,16 @@ import { AppError } from '../utils/AppError.js';
 import { ErrorSelector } from '../utils/errors.js';
 
 const register = async ({ email, password }) => {
+  if (!email || !password) {
+    throw new AppError(
+      ErrorSelector.BAD_REQUEST,
+      'Email and password are required'
+    );
+  }
+
   const existingUser = await prisma.user.findUnique({
     where: { email },
   });
-  if (!email || !password) {
-  throw new AppError(ErrorSelector.BAD_REQUEST, 'Email and password are required');
-}
 
   if (existingUser) {
     throw new AppError(ErrorSelector.CONFLICT, 'User already exists');
@@ -35,12 +39,16 @@ const register = async ({ email, password }) => {
 };
 
 const login = async ({ email, password }) => {
+  if (!email || !password) {
+    throw new AppError(
+      ErrorSelector.BAD_REQUEST,
+      'Email and password are required'
+    );
+  }
+
   const user = await prisma.user.findUnique({
     where: { email },
   });
-  if (!email || !password) {
-  throw new AppError(ErrorSelector.BAD_REQUEST, 'Email and password are required');
-}
 
   if (!user) {
     throw new AppError(ErrorSelector.UNAUTHORIZED, 'Invalid email or password');
@@ -64,6 +72,7 @@ const login = async ({ email, password }) => {
       id: user.id,
       email: user.email,
       role: user.role,
+      createdAt: user.createdAt,
     },
   };
 };

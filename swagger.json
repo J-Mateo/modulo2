@@ -1,0 +1,672 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Modulo 2 E-commerce API",
+    "description": "Backend API desarrollado con Express, Prisma, PostgreSQL, MongoDB, JWT, carrito, checkout y documentación Swagger.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Servidor local"
+    }
+  ],
+  "tags": [
+    { "name": "System", "description": "Estado del servidor" },
+    { "name": "Auth", "description": "Registro y login de usuarios" },
+    { "name": "Users", "description": "Gestión del perfil de usuario" },
+    { "name": "Products", "description": "Gestión de productos" },
+    { "name": "Reviews", "description": "Reseñas de productos almacenadas en MongoDB" },
+    { "name": "Wishlist", "description": "Lista de deseos del usuario" },
+    { "name": "Cart", "description": "Gestión del carrito de compras y checkout" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "example": "user@test.com" },
+          "password": { "type": "string", "example": "password123" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "example": "user@test.com" },
+          "password": { "type": "string", "example": "password123" }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "required": ["id", "email", "role", "createdAt"],
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "email": { "type": "string", "example": "user@test.com" },
+          "role": { "type": "string", "example": "USER" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ProductRequest": {
+        "type": "object",
+        "required": ["name", "price"],
+        "properties": {
+          "name": { "type": "string", "example": "Monitor 27 pulgadas" },
+          "description": { "type": "string", "example": "Monitor gaming QHD 165Hz" },
+          "price": { "type": "number", "example": 249.99 },
+          "stock": { "type": "integer", "example": 12 },
+          "imageUrl": { "type": "string", "nullable": true, "example": null }
+        }
+      },
+      "CartAddItemRequest": {
+        "type": "object",
+        "required": ["productId", "quantity"],
+        "properties": {
+          "productId": { "type": "integer", "example": 4 },
+          "quantity": { "type": "integer", "example": 2 }
+        }
+      },
+      "ReviewRequest": {
+        "type": "object",
+        "required": ["comment", "rating"],
+        "properties": {
+          "comment": { "type": "string", "example": "¡Excelente producto, muy recomendado!" },
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5, "example": 5 }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "required": ["_id", "productId", "comment", "rating"],
+        "properties": {
+          "_id": { "type": "string", "example": "65f1234abcd..." },
+          "productId": { "type": "integer", "example": 4 },
+          "comment": { "type": "string", "example": "Buen producto" },
+          "rating": { "type": "integer", "example": 4 }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "required": ["id", "name", "price", "stock", "createdAt", "updatedAt"],
+        "properties": {
+          "id": { "type": "integer", "example": 4 },
+          "name": { "type": "string", "example": "Auriculares Bluetooth" },
+          "description": { "type": "string", "example": "Auriculares inalámbricos con cancelación de ruido" },
+          "price": { "type": "number", "example": 89.99 },
+          "stock": { "type": "integer", "example": 13 },
+          "imageUrl": { "type": "string", "nullable": true, "example": null },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CartItem": {
+        "type": "object",
+        "required": ["id", "cartId", "productId", "quantity", "product"],
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "cartId": { "type": "integer", "example": 10 },
+          "productId": { "type": "integer", "example": 4 },
+          "quantity": { "type": "integer", "example": 2 },
+          "product": { "$ref": "#/components/schemas/Product" }
+        }
+      },
+      "Cart": {
+        "type": "object",
+        "required": ["id", "userId", "status", "createdAt", "updatedAt", "items"],
+        "properties": {
+          "id": { "type": "integer", "example": 10 },
+          "userId": { "type": "integer", "example": 1 },
+          "status": { "type": "string", "enum": ["ACTIVE", "CHECKED_OUT"], "example": "ACTIVE" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CartItem" }
+          }
+        }
+      },
+      "Wishlist": {
+        "type": "object",
+        "required": ["userId", "productIds"],
+        "properties": {
+          "userId": { "type": "string", "example": "2" },
+          "productIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["4", "12", "45"]
+          }
+        }
+      },
+      "OrderItem": {
+        "type": "object",
+        "required": ["productId", "quantity", "priceAtPurchase"],
+        "properties": {
+          "productId": { "type": "integer", "example": 4 },
+          "quantity": { "type": "integer", "example": 2 },
+          "priceAtPurchase": { "type": "number", "example": 89.99 }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "required": ["id", "userId", "total", "createdAt", "items"],
+        "properties": {
+          "id": { "type": "integer", "example": 15 },
+          "userId": { "type": "integer", "example": 2 },
+          "total": { "type": "number", "example": 439.94 },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderItem" }
+          }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "required": ["ok", "error"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "error": {
+            "type": "object",
+            "required": ["message"],
+            "properties": {
+              "message": { "type": "string" }
+            }
+          }
+        },
+        "example": {
+          "ok": false,
+          "error": {
+            "message": "Unauthorized"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "required": ["status"],
+            "properties": { "status": { "type": "string", "example": "up" } }
+          }
+        }
+      },
+      "AuthRegisterResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/UserResponse" }
+        }
+      },
+      "AuthLoginResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "required": ["token", "user"],
+            "properties": {
+              "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR..." },
+              "user": { "$ref": "#/components/schemas/UserResponse" }
+            }
+          }
+        }
+      },
+      "UserProfileResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/UserResponse" }
+        }
+      },
+      "ProductResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/Product" }
+        }
+      },
+      "ProductListResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "example": true },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Product" }
+          }
+        }
+      },
+      "ProductDeleteResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "required": ["id"],
+            "properties": { "id": { "type": "integer", "example": 4 } }
+          }
+        }
+      },
+      "ReviewListResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "example": true },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Review" }
+          }
+        }
+      },
+      "WishlistResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/Wishlist" }
+        }
+      },
+      "CartResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/Cart" }
+        }
+      },
+      "OrderResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/Order" }
+        }
+      }
+    },
+    "responses": {
+      "GeneralError": {
+        "description": "Error retornado por la API",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiError" }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Comprobar estado del servidor",
+        "responses": {
+          "200": {
+            "description": "Servidor funcionando correctamente",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Registrar un nuevo usuario",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario registrado correctamente",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthRegisterResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Iniciar sesión",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login correcto. Devuelve token JWT y datos del usuario",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthLoginResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    },
+    "/api/users/profile": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Obtener perfil del usuario autenticado",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Datos del perfil devueltos correctamente",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserProfileResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Listar productos",
+        "responses": {
+          "200": {
+            "description": "Lista de productos devuelta con éxito",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductListResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Products"],
+        "summary": "Crear producto",
+        "description": "Requiere usuario con rol ADMIN.",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProductRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Producto creado correctamente",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/GeneralError" },
+          "403": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Obtener producto por ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 4 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto encontrado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductResponse" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/GeneralError" }
+        }
+      },
+      "put": {
+        "tags": ["Products"],
+        "summary": "Actualizar producto",
+        "description": "Requiere usuario con rol ADMIN.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 4 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProductRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Producto actualizado correctamente",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/GeneralError" },
+          "403": { "$ref": "#/components/responses/GeneralError" },
+          "404": { "$ref": "#/components/responses/GeneralError" }
+        }
+      },
+      "delete": {
+        "tags": ["Products"],
+        "summary": "Eliminar producto",
+        "description": "Requiere usuario con rol ADMIN.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 4 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto eliminado correctamente",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductDeleteResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/GeneralError" },
+          "403": { "$ref": "#/components/responses/GeneralError" },
+          "404": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    },
+    "/api/products/{productId}/reviews": {
+      "get": {
+        "tags": ["Reviews"],
+        "summary": "Obtener reseñas de un producto",
+        "parameters": [
+          { "name": "productId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 4 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de reseñas del producto",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ReviewListResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Reviews"],
+        "summary": "Crear una nueva reseña para un producto",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "productId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 4 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ReviewRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Reseña creada con éxito" },
+          "400": { "$ref": "#/components/responses/GeneralError" },
+          "401": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    },
+    "/api/wishlist": {
+      "get": {
+        "tags": ["Wishlist"],
+        "summary": "Obtener la lista de deseos del usuario",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Lista de deseos obtenida correctamente",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WishlistResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    },
+    "/api/wishlist/{productId}": {
+      "post": {
+        "tags": ["Wishlist"],
+        "summary": "Agregar o quitar un producto de la lista de deseos (Toggle)",
+        "description": "Endpoint tipo toggle: si el producto no está, lo añade; si ya está, lo elimina.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "productId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 4 }
+        ],
+        "responses": {
+          "200": { "description": "Estado del producto cambiado exitosamente en la lista" },
+          "401": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    },
+    "/api/cart": {
+      "get": {
+        "tags": ["Cart"],
+        "summary": "Obtener o crear el carrito activo del usuario",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Devuelve el carrito activo con sus ítems y productos incluidos",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CartResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    },
+    "/api/cart/items": {
+      "post": {
+        "tags": ["Cart"],
+        "summary": "Agregar o actualizar un producto en el carrito",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CartAddItemRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Producto agregado. Devuelve el carrito actualizado completo",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CartResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/GeneralError" },
+          "401": { "$ref": "#/components/responses/GeneralError" },
+          "404": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    },
+    "/api/cart/items/{itemId}": {
+      "delete": {
+        "tags": ["Cart"],
+        "summary": "Eliminar un ítem específico del carrito",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "itemId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ítem eliminado. Devuelve el carrito actualizado completo",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CartResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/GeneralError" },
+          "404": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    },
+    "/api/cart/checkout": {
+      "post": {
+        "tags": ["Cart"],
+        "summary": "Procesar checkout y generar orden de compra",
+        "description": "Crea una orden, decrementa stock y marca el carrito como CHECKED_OUT.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "201": {
+            "description": "Orden creada con éxito",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OrderResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/GeneralError" },
+          "401": { "$ref": "#/components/responses/GeneralError" }
+        }
+      }
+    }
+  }
+}
