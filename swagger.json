@@ -57,13 +57,52 @@
       },
       "ProductRequest": {
         "type": "object",
-        "required": ["name", "price"],
+        "required": ["name", "price", "stock"],
         "properties": {
           "name": { "type": "string", "example": "Monitor 27 pulgadas" },
           "description": { "type": "string", "example": "Monitor gaming QHD 165Hz" },
           "price": { "type": "number", "example": 249.99 },
           "stock": { "type": "integer", "example": 12 },
           "imageUrl": { "type": "string", "nullable": true, "example": null }
+        }
+      },
+      "ProductMultipartRequest": {
+        "type": "object",
+        "required": ["name", "price", "stock"],
+        "properties": {
+          "name": { "type": "string", "example": "Producto Cloudinary" },
+          "description": { "type": "string", "example": "Producto con imagen subida a Cloudinary" },
+          "price": { "type": "number", "example": 99.99 },
+          "stock": { "type": "integer", "example": 10 },
+          "image": {
+            "type": "string",
+            "format": "binary",
+            "description": "Imagen del producto en formato jpg, jpeg, png o webp"
+          }
+        }
+      },
+      "ProductUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "example": "Monitor actualizado" },
+          "description": { "type": "string", "example": "Nueva descripción" },
+          "price": { "type": "number", "example": 199.99 },
+          "stock": { "type": "integer", "example": 8 },
+          "imageUrl": { "type": "string", "nullable": true, "example": null }
+        }
+      },
+      "ProductMultipartUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "example": "Monitor actualizado" },
+          "description": { "type": "string", "example": "Nueva descripción" },
+          "price": { "type": "number", "example": 199.99 },
+          "stock": { "type": "integer", "example": 8 },
+          "image": {
+            "type": "string",
+            "format": "binary",
+            "description": "Nueva imagen del producto en formato jpg, jpeg, png o webp"
+          }
         }
       },
       "CartAddItemRequest": {
@@ -411,13 +450,16 @@
       "post": {
         "tags": ["Products"],
         "summary": "Crear producto",
-        "description": "Requiere usuario con rol ADMIN.",
+        "description": "Requiere usuario con rol ADMIN. Soporta JSON plano o envío de archivos binarios (Multipart).",
         "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": { "$ref": "#/components/schemas/ProductRequest" }
+            },
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/ProductMultipartRequest" }
             }
           }
         },
@@ -430,6 +472,7 @@
               }
             }
           },
+          "400": { "$ref": "#/components/responses/GeneralError" },
           "401": { "$ref": "#/components/responses/GeneralError" },
           "403": { "$ref": "#/components/responses/GeneralError" }
         }
@@ -457,7 +500,7 @@
       "put": {
         "tags": ["Products"],
         "summary": "Actualizar producto",
-        "description": "Requiere usuario con rol ADMIN.",
+        "description": "Requiere usuario con rol ADMIN. Soporta actualización parcial mediante JSON plano o Multipart para cambiar la imagen.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 4 }
@@ -466,7 +509,10 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ProductRequest" }
+              "schema": { "$ref": "#/components/schemas/ProductUpdateRequest" }
+            },
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/ProductMultipartUpdateRequest" }
             }
           }
         },
@@ -479,6 +525,7 @@
               }
             }
           },
+          "400": { "$ref": "#/components/responses/GeneralError" },
           "401": { "$ref": "#/components/responses/GeneralError" },
           "403": { "$ref": "#/components/responses/GeneralError" },
           "404": { "$ref": "#/components/responses/GeneralError" }
