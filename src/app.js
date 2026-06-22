@@ -9,9 +9,10 @@ import indexRoutes from './routes/index.routes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { notFound } from './middlewares/notFound.js';
 import env from './config/env.js';
+import cookieParser from 'cookie-parser';
 
 const app = express();
-
+app.use(cookieParser());
 app.use(helmet());
 
 app.use(
