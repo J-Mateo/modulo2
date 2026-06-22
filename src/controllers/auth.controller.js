@@ -15,11 +15,38 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const result = await authService.login(req.body);
+    const { token, user } = await authService.login(req.body);
+
+    res.cookie('access_token', token, {
+      maxAge: 60 * 60 * 1000,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
 
     return res.status(200).json({
       ok: true,
-      data: result,
+      data: {
+        token,
+        user,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const logout = async (req, res, next) => {
+  try {
+    res.clearCookie('access_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+});
+
+    return res.status(200).json({
+      ok: true,
+      message: 'Sesión cerrada correctamente',
     });
   } catch (err) {
     next(err);
@@ -29,4 +56,5 @@ const login = async (req, res, next) => {
 export const authController = {
   register,
   login,
+  logout,
 };

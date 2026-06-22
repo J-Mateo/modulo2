@@ -6,11 +6,19 @@ export const authenticate = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const bearerToken =
+      authHeader && authHeader.startsWith('Bearer ')
+        ? authHeader.split(' ')[1]
+        : null;
+
+    const cookieToken = req.cookies?.access_token;
+
+    const token = cookieToken || bearerToken;
+
+    if (!token) {
       throw new AppError(ErrorSelector.UNAUTHORIZED);
     }
 
-    const token = authHeader.split(' ')[1];
     const payload = verifyToken(token);
 
     req.user = payload;
