@@ -9,6 +9,10 @@
     {
       "url": "http://localhost:3000",
       "description": "Servidor local"
+    },
+    {
+      "url": "https://backend-modulo2-api.onrender.com",
+      "description": "Servidor en Render"
     }
   ],
   "tags": [
