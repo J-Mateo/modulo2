@@ -137,6 +137,8 @@ src/
 
 Crear un archivo `.env`:
 
+> No incluyas nunca tu archivo `.env` en el repositorio.
+
 ```env
 PORT=3000
 
@@ -376,10 +378,8 @@ Ejemplo:
 
 ---
 
-## 👨‍💻 Autor
+## 👩‍💻 Autora
 
 **Jessica Mateo**
 
-Desarrolladora Full Stack.
-
-Proyecto desarrollado de forma individual como práctica de desarrollo backend utilizando Node.js, Express, PostgreSQL, MongoDB, Prisma, Mongoose, JWT y Cloudinary.
+Proyecto desarrollado de forma individual como práctica de desarrollo backend con Node.js, Express, PostgreSQL, MongoDB, Prisma, Mongoose, JWT y Cloudinary.
