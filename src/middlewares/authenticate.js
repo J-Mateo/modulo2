@@ -15,10 +15,6 @@ export const authenticate = (req, res, next) => {
 
     const token = cookieToken || bearerToken;
 
-    if (!token) {
-      throw new AppError(ErrorSelector.UNAUTHORIZED);
-    }
-
     const payload = verifyToken(token);
 
     req.user = payload;
