@@ -1,12 +1,13 @@
 {
-  "name": "modulo2",
+  "name": "backend-modulo2-api",
   "version": "1.0.0",
   "description": "",
   "main": "src/server.js",
-  "scripts": {
-    "test": "node --experimental-vm-modules node_modules/.bin/jest --runInBand",
-    "start": "node --watch src/server.js"
-  },
+"scripts": {
+  "test": "node --experimental-vm-modules node_modules/.bin/jest --runInBand",
+  "start": "node src/server.js",
+  "dev": "node --watch src/server.js"
+},
   "keywords": [],
   "author": "Jessica Mateo",
   "license": "ISC",
