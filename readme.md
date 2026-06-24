@@ -12,7 +12,7 @@ https://backend-modulo2-api.onrender.com
 
 ### Swagger UI
 
-https://backend-modulo2-api.onrender.com/api/docs
+https://backend-modulo2-api.onrender.com/api/docs/
 
 ---
 
