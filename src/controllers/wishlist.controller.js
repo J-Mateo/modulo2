@@ -7,7 +7,7 @@ const getWishlist = async (req, res, next) => {
     );
 
     return res.json({
-      ok: true,
+      success: true,
       data: wishlist,
     });
   } catch (error) {
@@ -25,7 +25,7 @@ const toggleProduct = async (req, res, next) => {
     );
 
     return res.json({
-      ok: true,
+      success: true,
       data: wishlist,
     });
   } catch (error) {

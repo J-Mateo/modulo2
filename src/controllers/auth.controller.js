@@ -5,7 +5,7 @@ const register = async (req, res, next) => {
     const user = await authService.register(req.body);
 
     return res.status(201).json({
-      ok: true,
+      success: true,
       data: user,
     });
   } catch (err) {
@@ -25,9 +25,8 @@ const login = async (req, res, next) => {
     });
 
     return res.status(200).json({
-      ok: true,
+      success: true,
       data: {
-        token,
         user,
       },
     });
@@ -45,7 +44,7 @@ const logout = async (req, res, next) => {
 });
 
     return res.status(200).json({
-      ok: true,
+      success: true,
       message: 'Sesión cerrada correctamente',
     });
   } catch (err) {

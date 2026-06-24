@@ -33,7 +33,7 @@ const validateAndSanitizePayload = (body) => {
 const getProducts = async (req, res, next) => {
   try {
     const products = await productsService.getProducts();
-    return res.json({ ok: true, data: products });
+    return res.json({ success: true, data: products });
   } catch (err) {
     next(err);
   }
@@ -47,7 +47,7 @@ const getProductById = async (req, res, next) => {
     const product = await productsService.getProductById(id);
     if (!product) throw new AppError(ErrorSelector.NOT_FOUND);
 
-    return res.json({ ok: true, data: product });
+    return res.json({ success: true, data: product });
   } catch (err) {
     next(err);
   }
@@ -70,7 +70,7 @@ const createProduct = async (req, res, next) => {
       imageUrl,
     });
 
-    return res.status(201).json({ ok: true, data: product });
+    return res.status(201).json({ success: true, data: product });
   } catch (err) {
     next(err);
   }
@@ -108,7 +108,7 @@ const updateProduct = async (req, res, next) => {
 
     if (!updatedProduct) throw new AppError(ErrorSelector.NOT_FOUND);
 
-    return res.json({ ok: true, data: updatedProduct });
+    return res.json({ success: true, data: updatedProduct });
   } catch (err) {
     next(err);
   }
@@ -122,7 +122,7 @@ const deleteProduct = async (req, res, next) => {
     const deletedProduct = await productsService.deleteProduct(id);
     if (!deletedProduct) throw new AppError(ErrorSelector.NOT_FOUND);
 
-    return res.json({ ok: true, data: deletedProduct });
+    return res.json({ success: true, data: deletedProduct });
   } catch (err) {
     next(err);
   }

@@ -12,7 +12,7 @@ https://backend-modulo2-api.onrender.com
 
 ### Swagger UI
 
-https://backend-modulo2-api.onrender.com/api-docs
+https://backend-modulo2-api.onrender.com/api/docs
 
 ---
 
@@ -38,7 +38,8 @@ https://backend-modulo2-api.onrender.com/api-docs
 
 ## 📊 Características principales
 
-* Autenticación y autorización mediante JWT
+* Autenticación mediante JWT almacenado en cookies httpOnly
+* Autorización basada en roles
 * Gestión de usuarios y perfiles
 * CRUD completo de productos
 * Carga de imágenes con Cloudinary
@@ -100,6 +101,7 @@ Las imágenes de productos se almacenan en Cloudinary.
 | MongoDB Atlas   | Base de datos documental |
 | Mongoose        | ODM para MongoDB         |
 | JWT             | Autenticación            |
+| Cookie Parser   | Gestión cookies httpOnly |
 | Cloudinary      | Gestión de imágenes      |
 | Swagger/OpenAPI | Documentación            |
 | Render          | Despliegue               |
@@ -147,6 +149,9 @@ DATABASE_URL="postgresql://user:password@host:port/database?schema=public"
 MONGODB_URI="mongodb+srv://user:password@cluster.mongodb.net/database"
 
 JWT_SECRET="your_jwt_secret"
+JWT_EXPIRES_IN="1h"
+
+FRONTEND_URL="http://localhost:5173"
 
 CLOUDINARY_CLOUD_NAME="your_cloud_name"
 CLOUDINARY_API_KEY="your_api_key"
@@ -224,6 +229,8 @@ Tests: 24 passed, 24 total
 ---
 ## 🔐 Autenticación
 
+La API utiliza autenticación basada en **JWT almacenado en cookies httpOnly**.
+
 ### Registro
 
 ```http
@@ -236,134 +243,56 @@ POST /api/auth/register
 POST /api/auth/login
 ```
 
+Al iniciar sesión:
+
+* Se genera un JWT.
+* El JWT se almacena en una cookie `httpOnly`.
+* El token no se devuelve en el cuerpo de la respuesta.
+* Las rutas protegidas leen automáticamente la cookie enviada por el cliente.
+
+Ejemplo de respuesta:
+
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "email": "user@test.com",
+      "role": "USER"
+    }
+  }
+}
+```
+
+### Logout
+
+```http
+POST /api/auth/logout
+```
+
+Elimina la cookie de autenticación y cierra la sesión del usuario.
+
 ### Perfil del usuario
 
 ```http
 GET /api/users/profile
 ```
 
-Requiere:
+Requiere una cookie de autenticación válida.
+
+No es necesario enviar:
 
 ```http
 Authorization: Bearer <token>
 ```
 
----
-
-## 📦 Productos
-
-### Obtener todos los productos
-
-```http
-GET /api/products
-```
-
-### Obtener producto por ID
-
-```http
-GET /api/products/:id
-```
-
-### Crear producto (Admin)
-
-```http
-POST /api/products
-```
-
-### Actualizar producto (Admin)
-
-```http
-PUT /api/products/:id
-```
-
-### Eliminar producto (Admin)
-
-```http
-DELETE /api/products/:id
-```
+La autenticación se realiza automáticamente mediante la cookie `access_token`.
 
 ---
-
-## 🛒 Carrito y Checkout
-
-### Obtener carrito activo
-
-```http
-GET /api/cart
-```
-
-### Añadir producto
-
-```http
-POST /api/cart/items
-```
-
-### Eliminar producto del carrito
-
-```http
-DELETE /api/cart/items/:itemId
-```
-
-### Checkout
-
-```http
-POST /api/cart/checkout
-```
-
-Durante el checkout:
-
-* Se valida stock disponible.
-* Se genera una orden de compra.
-* Se crean los registros OrderItem.
-* Se descuenta el stock correspondiente.
-* El carrito pasa a estado `CHECKED_OUT`.
-
----
-
-## 🍃 Wishlist (MongoDB)
-
-### Obtener wishlist
-
-```http
-GET /api/wishlist
-```
-
-### Añadir o eliminar producto
-
-```http
-POST /api/wishlist/:productId
-```
-
----
-
-## ⭐ Reviews (MongoDB)
-
-### Obtener reviews de un producto
-
-```http
-GET /api/products/:productId/reviews
-```
-
-### Crear review
-
-```http
-POST /api/products/:productId/reviews
-```
-
-Ejemplo:
-
-```json
-{
-  "rating": 5,
-  "comment": "Excelente producto"
-}
-```
-
----
-
 ## ✅ Funcionalidades verificadas
 
-* Gestión de usuarios con JWT
+* Gestión de usuarios con JWT y cookies httpOnly
 * Control de acceso mediante roles
 * CRUD de productos
 * Subida de imágenes a Cloudinary
@@ -373,10 +302,10 @@ Ejemplo:
 * Control automático de stock
 * Wishlist en MongoDB Atlas
 * Reviews en MongoDB Atlas
-* Documentación Swagger en producción
+* Documentación Swagger/OpenAPI
 * API desplegada en Render
+* Tests de integración con Jest y Supertest
 
----
 
 ## 👩‍💻 Autora
 

@@ -6,7 +6,7 @@ describe('Cart endpoints', () => {
     const response = await request(app).get('/api/cart');
 
     expect(response.statusCode).toBe(401);
-    expect(response.body.ok).toBe(false);
+    expect(response.body.success).toBe(false);
     expect(response.body.error).toHaveProperty('message');
   });
 
@@ -18,14 +18,14 @@ describe('Cart endpoints', () => {
         password: 'password123',
       });
 
-    const token = loginResponse.body.data.token;
+    const cookies = loginResponse.headers['set-cookie'];
 
     const response = await request(app)
       .get('/api/cart')
-      .set('Authorization', `Bearer ${token}`);
+      .set('Cookie', cookies);
 
     expect(response.statusCode).toBe(200);
-    expect(response.body.ok).toBe(true);
+    expect(response.body.success).toBe(true);
     expect(response.body.data).toHaveProperty('id');
     expect(response.body.data).toHaveProperty('userId');
     expect(response.body.data).toHaveProperty('status');
@@ -40,21 +40,21 @@ describe('Cart endpoints', () => {
       password: 'password123',
     });
 
-  const token = loginResponse.body.data.token;
+  const cookies = loginResponse.headers['set-cookie'];
 
   const productsResponse = await request(app).get('/api/products');
   const productId = productsResponse.body.data[0].id;
 
   const response = await request(app)
     .post('/api/cart/items')
-    .set('Authorization', `Bearer ${token}`)
+    .set('Cookie', cookies)
     .send({
       productId,
       quantity: 1,
     });
 
   expect(response.statusCode).toBe(200);
-  expect(response.body.ok).toBe(true);
+  expect(response.body.success).toBe(true);
   expect(response.body.data).toHaveProperty('items');
   expect(Array.isArray(response.body.data.items)).toBe(true);
 
@@ -73,14 +73,14 @@ it('DELETE /api/cart/items/:itemId should remove product from cart with valid to
       password: 'password123',
     });
 
-  const token = loginResponse.body.data.token;
+  const cookies = loginResponse.headers['set-cookie'];
 
   const productsResponse = await request(app).get('/api/products');
   const productId = productsResponse.body.data[0].id;
 
   const addResponse = await request(app)
     .post('/api/cart/items')
-    .set('Authorization', `Bearer ${token}`)
+    .set('Cookie', cookies)
     .send({
       productId,
       quantity: 1,
@@ -96,10 +96,10 @@ it('DELETE /api/cart/items/:itemId should remove product from cart with valid to
 
   const response = await request(app)
     .delete(`/api/cart/items/${addedItem.id}`)
-    .set('Authorization', `Bearer ${token}`);
+    .set('Cookie', cookies);
 
   expect(response.statusCode).toBe(200);
-  expect(response.body.ok).toBe(true);
+  expect(response.body.success).toBe(true);
   expect(response.body.data).toHaveProperty('items');
 
   const removedItem = response.body.data.items.find(
@@ -116,7 +116,7 @@ it('POST /api/cart/checkout should create an order with valid token', async () =
       password: 'password123',
     });
 
-  const token = loginResponse.body.data.token;
+  const cookies = loginResponse.headers['set-cookie'];
 
   const productsResponse = await request(app).get('/api/products');
 
@@ -128,7 +128,7 @@ it('POST /api/cart/checkout should create an order with valid token', async () =
 
   await request(app)
     .post('/api/cart/items')
-    .set('Authorization', `Bearer ${token}`)
+    .set('Cookie', cookies)
     .send({
       productId: product.id,
       quantity: 1,
@@ -136,10 +136,10 @@ it('POST /api/cart/checkout should create an order with valid token', async () =
 
   const response = await request(app)
     .post('/api/cart/checkout')
-    .set('Authorization', `Bearer ${token}`);
+    .set('Cookie', cookies);
 
   expect(response.statusCode).toBe(201);
-  expect(response.body.ok).toBe(true);
+  expect(response.body.success).toBe(true);
   expect(response.body.data).toHaveProperty('id');
   expect(response.body.data).toHaveProperty('userId');
   expect(response.body.data).toHaveProperty('total');

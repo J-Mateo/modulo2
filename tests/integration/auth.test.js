@@ -2,7 +2,7 @@ import request from 'supertest';
 import app from '../../src/app.js';
 
 describe('Auth endpoints', () => {
-  it('POST /api/auth/login should return token and user data with valid credentials', async () => {
+  it('POST /api/auth/login should set httpOnly cookie and return user data with valid credentials', async () => {
     const response = await request(app)
       .post('/api/auth/login')
       .send({
@@ -10,16 +10,21 @@ describe('Auth endpoints', () => {
         password: 'password123',
       });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.body.ok).toBe(true);
-    expect(response.body.data).toHaveProperty('token');
-    expect(response.body.data).toHaveProperty('user');
-    expect(response.body.data.user).toHaveProperty('id');
-    expect(response.body.data.user).toHaveProperty('email');
-    expect(response.body.data.user).toHaveProperty('role');
-    expect(response.body.data.user).toHaveProperty('createdAt');
-  });
+expect(response.statusCode).toBe(200);
+expect(response.body.success).toBe(true);
+expect(response.body.data).not.toHaveProperty('token');
+expect(response.body.data).toHaveProperty('user');
+expect(response.headers['set-cookie']).toBeDefined();
 
+const cookies = response.headers['set-cookie'];
+expect(cookies.some((cookie) => cookie.startsWith('access_token='))).toBe(true);
+expect(cookies.some((cookie) => cookie.includes('HttpOnly'))).toBe(true);
+
+expect(response.body.data.user).toHaveProperty('id');
+expect(response.body.data.user).toHaveProperty('email');
+expect(response.body.data.user).toHaveProperty('role');
+expect(response.body.data.user).toHaveProperty('createdAt');
+});
   it('POST /api/auth/login should fail with invalid credentials', async () => {
     const response = await request(app)
       .post('/api/auth/login')
@@ -29,7 +34,7 @@ describe('Auth endpoints', () => {
       });
 
     expect(response.statusCode).toBe(401);
-    expect(response.body.ok).toBe(false);
+    expect(response.body.success).toBe(false);
     expect(response.body.error).toHaveProperty('message');
   });
 
@@ -44,7 +49,7 @@ describe('Auth endpoints', () => {
       });
 
     expect(response.statusCode).toBe(201);
-    expect(response.body.ok).toBe(true);
+    expect(response.body.success).toBe(true);
     expect(response.body.data).toHaveProperty('id');
     expect(response.body.data.email).toBe(uniqueEmail);
     expect(response.body.data).toHaveProperty('role');
@@ -67,7 +72,7 @@ describe('Auth endpoints', () => {
       password: 'Password123!',
     });
 
-  expect(response.body.ok).toBe(false);
+  expect(response.body.success).toBe(false);
 
   expect([400, 409]).toContain(response.statusCode);
 

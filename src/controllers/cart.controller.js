@@ -5,7 +5,7 @@ const getCart = async (req, res, next) => {
     const cart = await cartService.getOrCreateActiveCart(req.user.userId);
 
     return res.json({
-      ok: true,
+      success: true,
       data: cart,
     });
   } catch (error) {
@@ -22,7 +22,7 @@ const addItem = async (req, res, next) => {
     });
 
     return res.json({
-      ok: true,
+      success: true,
       data: cart,
     });
   } catch (error) {
@@ -38,7 +38,7 @@ const removeItem = async (req, res, next) => {
     });
 
     return res.json({
-      ok: true,
+      success: true,
       data: cart,
     });
   } catch (error) {
@@ -51,7 +51,7 @@ const checkout = async (req, res, next) => {
     const order = await cartService.checkout(req.user.userId);
 
     return res.status(201).json({
-      ok: true,
+      success: true,
       data: order,
     });
   } catch (error) {
