@@ -6,7 +6,7 @@ describe('Products endpoints', () => {
     const response = await request(app).get('/api/products');
 
     expect(response.statusCode).toBe(200);
-    expect(response.body.ok).toBe(true);
+    expect(response.body.success).toBe(true);
     expect(Array.isArray(response.body.data)).toBe(true);
   });
 
@@ -17,7 +17,7 @@ describe('Products endpoints', () => {
     const response = await request(app).get(`/api/products/${productId}`);
 
     expect(response.statusCode).toBe(200);
-    expect(response.body.ok).toBe(true);
+    expect(response.body.success).toBe(true);
     expect(response.body.data).toHaveProperty('id', productId);
     expect(response.body.data).toHaveProperty('name');
     expect(response.body.data).toHaveProperty('price');
@@ -28,7 +28,7 @@ describe('Products endpoints', () => {
     const response = await request(app).get('/api/products/999999');
 
     expect(response.statusCode).toBe(404);
-    expect(response.body.ok).toBe(false);
+    expect(response.body.success).toBe(false);
     expect(response.body.error).toHaveProperty('message');
   });
 });

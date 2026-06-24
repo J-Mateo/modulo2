@@ -6,7 +6,7 @@ describe('Users endpoints', () => {
     const response = await request(app).get('/api/users/profile');
 
     expect(response.statusCode).toBe(401);
-    expect(response.body.ok).toBe(false);
+    expect(response.body.success).toBe(false);
     expect(response.body.error).toHaveProperty('message');
   });
 });

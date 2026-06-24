@@ -26,12 +26,13 @@
   ],
   "components": {
     "securitySchemes": {
-      "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
-      }
-    },
+      "CookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "access_token"
+    }
+  },
+
     "schemas": {
       "RegisterRequest": {
         "type": "object",
@@ -252,18 +253,22 @@
       },
       "AuthLoginResponse": {
         "type": "object",
-        "required": ["ok", "data"],
+        "required": ["success", "data"],
         "properties": {
-          "ok": { "type": "boolean", "example": true },
-          "data": {
-            "type": "object",
-            "required": ["token", "user"],
-            "properties": {
-              "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR..." },
-              "user": { "$ref": "#/components/schemas/UserResponse" }
-            }
-          }
-        }
+        "success": {
+        "type": "boolean",
+        "example": true
+      },
+        "data": {
+        "type": "object",
+        "required": ["user"],
+        "properties": {
+        "user": {
+          "$ref": "#/components/schemas/UserResponse"
+             }
+           }
+         }
+       }
       },
       "UserProfileResponse": {
         "type": "object",
@@ -407,7 +412,7 @@
         },
         "responses": {
           "200": {
-            "description": "Login correcto. Devuelve token JWT y datos del usuario",
+            "description": "Login correcto. Guarda el JWT en una cookie httpOnly y devuelve los datos del usuario",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/AuthLoginResponse" }
@@ -422,7 +427,7 @@
       "get": {
         "tags": ["Users"],
         "summary": "Obtener perfil del usuario autenticado",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "CookieAuth": [] }],
         "responses": {
           "200": {
             "description": "Datos del perfil devueltos correctamente",
@@ -455,7 +460,7 @@
         "tags": ["Products"],
         "summary": "Crear producto",
         "description": "Requiere usuario con rol ADMIN. Soporta JSON plano o envío de archivos binarios (Multipart).",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "CookieAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -505,7 +510,7 @@
         "tags": ["Products"],
         "summary": "Actualizar producto",
         "description": "Requiere usuario con rol ADMIN. Soporta actualización parcial mediante JSON plano o Multipart para cambiar la imagen.",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "CookieAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 4 }
         ],
@@ -539,7 +544,7 @@
         "tags": ["Products"],
         "summary": "Eliminar producto",
         "description": "Requiere usuario con rol ADMIN.",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "CookieAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 4 }
         ],
@@ -579,7 +584,7 @@
       "post": {
         "tags": ["Reviews"],
         "summary": "Crear una nueva reseña para un producto",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "CookieAuth": [] }],
         "parameters": [
           { "name": "productId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 4 }
         ],
@@ -602,7 +607,7 @@
       "get": {
         "tags": ["Wishlist"],
         "summary": "Obtener la lista de deseos del usuario",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "CookieAuth": [] }],
         "responses": {
           "200": {
             "description": "Lista de deseos obtenida correctamente",
@@ -621,7 +626,7 @@
         "tags": ["Wishlist"],
         "summary": "Agregar o quitar un producto de la lista de deseos (Toggle)",
         "description": "Endpoint tipo toggle: si el producto no está, lo añade; si ya está, lo elimina.",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "CookieAuth": [] }],
         "parameters": [
           { "name": "productId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 4 }
         ],
@@ -635,7 +640,7 @@
       "get": {
         "tags": ["Cart"],
         "summary": "Obtener o crear el carrito activo del usuario",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "CookieAuth": [] }],
         "responses": {
           "200": {
             "description": "Devuelve el carrito activo con sus ítems y productos incluidos",
@@ -653,7 +658,7 @@
       "post": {
         "tags": ["Cart"],
         "summary": "Agregar o actualizar un producto en el carrito",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "CookieAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -681,7 +686,7 @@
       "delete": {
         "tags": ["Cart"],
         "summary": "Eliminar un ítem específico del carrito",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "CookieAuth": [] }],
         "parameters": [
           { "name": "itemId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
         ],
@@ -704,7 +709,7 @@
         "tags": ["Cart"],
         "summary": "Procesar checkout y generar orden de compra",
         "description": "Crea una orden, decrementa stock y marca el carrito como CHECKED_OUT.",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "CookieAuth": [] }],
         "responses": {
           "201": {
             "description": "Orden creada con éxito",
