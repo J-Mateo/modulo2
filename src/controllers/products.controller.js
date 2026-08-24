@@ -3,7 +3,6 @@ import { cloudinaryService } from '../services/cloudinary.service.js';
 import { AppError } from '../utils/AppError.js';
 import { ErrorSelector } from '../utils/errors.js';
 
-// Convertimos y validamos los tipos que vienen como string desde Multer
 const validateAndSanitizePayload = (body) => {
   const { name, price, stock } = body;
 
@@ -22,7 +21,6 @@ const validateAndSanitizePayload = (body) => {
     throw new AppError(ErrorSelector.BAD_REQUEST);
   }
 
-  // Devolvemos los datos ya tipados correctamente
   return {
     ...body,
     price: parsedPrice,
@@ -32,8 +30,16 @@ const validateAndSanitizePayload = (body) => {
 
 const getProducts = async (req, res, next) => {
   try {
-    const products = await productsService.getProducts();
-    return res.json({ success: true, data: products });
+    const { category } = req.query;
+
+    const products = await productsService.getProducts({
+      category,
+    });
+
+    return res.json({
+      success: true,
+      data: products,
+    });
   } catch (err) {
     next(err);
   }
@@ -55,19 +61,20 @@ const getProductById = async (req, res, next) => {
 
 const createProduct = async (req, res, next) => {
   try {
-    // Sanitizamos el body para asegurar números reales
     const sanitizedBody = validateAndSanitizePayload(req.body);
 
-    let imageUrl = sanitizedBody.imageUrl || null;
+    // Si viene un array de imágenes en el body o una única URL, lo normalizamos
+    let images = sanitizedBody.images || [];
+    if (typeof images === 'string') images = [images];
 
     if (req.file) {
       const result = await cloudinaryService.uploadImage(req.file);
-      imageUrl = result.secure_url;
+      images.push(result.secure_url);
     }
 
     const product = await productsService.createProduct({
       ...sanitizedBody,
-      imageUrl,
+      images,
     });
 
     return res.status(201).json({ success: true, data: product });
@@ -81,12 +88,10 @@ const updateProduct = async (req, res, next) => {
     const id = Number(req.params.id);
     if (Number.isNaN(id)) throw new AppError(ErrorSelector.BAD_REQUEST);
 
-    // En PUT/PATCH los campos pueden ser opcionales, adaptamos el parseo
     const dataToUpdate = { ...req.body };
     if (dataToUpdate.price !== undefined) dataToUpdate.price = Number(dataToUpdate.price);
     if (dataToUpdate.stock !== undefined) dataToUpdate.stock = Number(dataToUpdate.stock);
 
-    // Validación básica si se envían para actualización
     if (
       (dataToUpdate.price !== undefined && (Number.isNaN(dataToUpdate.price) || dataToUpdate.price < 0)) ||
       (dataToUpdate.stock !== undefined && (Number.isNaN(dataToUpdate.stock) || dataToUpdate.stock < 0))
@@ -94,16 +99,17 @@ const updateProduct = async (req, res, next) => {
       throw new AppError(ErrorSelector.BAD_REQUEST);
     }
 
-    let imageUrl = dataToUpdate.imageUrl;
+    let images = dataToUpdate.images;
+    if (typeof images === 'string') images = [images];
 
     if (req.file) {
       const result = await cloudinaryService.uploadImage(req.file);
-      imageUrl = result.secure_url;
+      images = images ? [...images, result.secure_url] : [result.secure_url];
     }
 
     const updatedProduct = await productsService.updateProduct(id, {
       ...dataToUpdate,
-      imageUrl,
+      ...(images && { images }),
     });
 
     if (!updatedProduct) throw new AppError(ErrorSelector.NOT_FOUND);

@@ -1,7 +1,19 @@
 import prisma from '../config/prismaClient.js';
 
-const getProducts = () => {
-  return prisma.product.findMany();
+const getProducts = (filters = {}) => {
+  const where = {};
+
+  // Solo filtramos si 'category' existe y NO es un texto vacío ""
+  if (filters.category && filters.category.trim() !== '') {
+    where.category = filters.category;
+  }
+
+  return prisma.product.findMany({
+    where,
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
 };
 
 const getProductById = (id) => {
@@ -14,10 +26,11 @@ const createProduct = (data) => {
   return prisma.product.create({
     data: {
       name: data.name,
+      category: data.category,
       description: data.description,
       price: Number(data.price),
       stock: Number(data.stock),
-      imageUrl: data.imageUrl,
+      images: data.images || [], // <--- Cambiado de imageUrl a images
     },
   });
 };
@@ -29,6 +42,7 @@ const updateProduct = (id, data) => {
       ...data,
       price: data.price !== undefined ? Number(data.price) : undefined,
       stock: data.stock !== undefined ? Number(data.stock) : undefined,
+      images: data.images !== undefined ? data.images : undefined, // <--- Cambiado a images
     },
   });
 };
@@ -46,4 +60,3 @@ export const productsService = {
   updateProduct,
   deleteProduct,
 };
-

@@ -12,9 +12,10 @@ model Product {
   description String?
   price       Float
   stock       Int         @default(0)
-  imageUrl    String?
+  images      String[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+  category    String?
   cartItems   CartItem[]
   orderItems  OrderItem[]
 }
