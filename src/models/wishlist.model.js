@@ -6,15 +6,23 @@ const wishlistSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      index: true,
+      trim: true,
     },
 
     productIds: {
-      type: [String],
+      type: [
+        {
+          type: String,
+          trim: true,
+        },
+      ],
       default: [],
     },
   },
   {
     timestamps: true,
+    versionKey: false,
   }
 );
 
