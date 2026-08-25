@@ -1,11 +1,11 @@
 import { usersService } from '../services/users.service.js';
+import { sendSuccess } from '../utils/responses.js';
 
 const getProfile = async (req, res, next) => {
   try {
     const user = await usersService.getProfile(req.user.userId);
 
-    return res.json({
-      ok: true,
+    return sendSuccess(res, {
       data: user,
     });
   } catch (err) {

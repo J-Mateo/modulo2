@@ -1,4 +1,5 @@
 import prisma from '../config/prismaClient.js';
+
 import { AppError } from '../utils/AppError.js';
 import { ErrorSelector } from '../utils/errors.js';
 
@@ -7,6 +8,7 @@ const getProfile = async (userId) => {
     where: { id: Number(userId) },
     select: {
       id: true,
+      name: true,
       email: true,
       role: true,
       createdAt: true,
