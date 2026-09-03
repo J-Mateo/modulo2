@@ -1,14 +1,30 @@
-export const sendSuccess = (res, { statusCode = 200, data = null, message } = {}) => {
+import { serializeApiData } from './serializeApiData.js';
+
+export const sendSuccess = (
+  res,
+  {
+    statusCode = 200,
+    data = null,
+    message,
+    meta,
+  } = {}
+) => {
   const body = {
     success: true,
-    data,
+    data: serializeApiData(data),
   };
 
   if (message) {
     body.message = message;
   }
 
-  return res.status(statusCode).json(body);
+  if (meta !== undefined) {
+    body.meta = serializeApiData(meta);
+  }
+
+  return res
+    .status(statusCode)
+    .json(body);
 };
 
 export const sendError = (

@@ -1,12 +1,12 @@
 import prisma from '../config/prismaClient.js';
 
-const getProducts = async ({
-  page = 1,
-  limit = 12,
+const buildPublicWhere = ({
   category = '',
   search = '',
 } = {}) => {
-  const where = {};
+  const where = {
+    isActive: true,
+  };
 
   if (category) {
     where.category = category;
@@ -29,21 +29,37 @@ const getProducts = async ({
     ];
   }
 
+  return where;
+};
+
+const getProducts = async ({
+  page = 1,
+  limit = 12,
+  category = '',
+  search = '',
+} = {}) => {
+  const where = buildPublicWhere({
+    category,
+    search,
+  });
+
   const skip = (page - 1) * limit;
 
-  const [products, total] = await prisma.$transaction([
-    prisma.product.findMany({
-      where,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      skip,
-      take: limit,
-    }),
-    prisma.product.count({
-      where,
-    }),
-  ]);
+  const [products, total] =
+    await prisma.$transaction([
+      prisma.product.findMany({
+        where,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+
+      prisma.product.count({
+        where,
+      }),
+    ]);
 
   return {
     products,
@@ -51,17 +67,85 @@ const getProducts = async ({
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages:
+        total === 0
+          ? 0
+          : Math.ceil(total / limit),
     },
   };
 };
 
 const getProductById = async (id) => {
+  return prisma.product.findFirst({
+    where: {
+      id: Number(id),
+      isActive: true,
+    },
+  });
+};
+
+const getProductByIdForAdmin = async (id) => {
   return prisma.product.findUnique({
     where: {
       id: Number(id),
     },
   });
+};
+
+const getProductsForAdmin = async ({
+  page = 1,
+  limit = 20,
+  search = '',
+} = {}) => {
+  const where = {};
+
+  if (search) {
+    where.OR = [
+      {
+        name: {
+          contains: search,
+          mode: 'insensitive',
+        },
+      },
+      {
+        description: {
+          contains: search,
+          mode: 'insensitive',
+        },
+      },
+    ];
+  }
+
+  const skip = (page - 1) * limit;
+
+  const [products, total] =
+    await prisma.$transaction([
+      prisma.product.findMany({
+        where,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+
+      prisma.product.count({
+        where,
+      }),
+    ]);
+
+  return {
+    products,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages:
+        total === 0
+          ? 0
+          : Math.ceil(total / limit),
+    },
+  };
 };
 
 const createProduct = async (data) => {
@@ -70,14 +154,33 @@ const createProduct = async (data) => {
       name: data.name,
       category: data.category || null,
       description: data.description || null,
-      price: Number(data.price),
+      price: data.price,
       stock: Number(data.stock),
-      images: Array.isArray(data.images) ? data.images : [],
+      images: Array.isArray(data.images)
+        ? data.images
+        : [],
+      isActive: true,
     },
   });
 };
 
 const updateProduct = async (id, data) => {
+  const productId = Number(id);
+
+  const existingProduct =
+    await prisma.product.findUnique({
+      where: {
+        id: productId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+  if (!existingProduct) {
+    return null;
+  }
+
   const updateData = {};
 
   if (data.name !== undefined) {
@@ -85,15 +188,17 @@ const updateProduct = async (id, data) => {
   }
 
   if (data.category !== undefined) {
-    updateData.category = data.category || null;
+    updateData.category =
+      data.category || null;
   }
 
   if (data.description !== undefined) {
-    updateData.description = data.description || null;
+    updateData.description =
+      data.description || null;
   }
 
   if (data.price !== undefined) {
-    updateData.price = Number(data.price);
+    updateData.price = data.price;
   }
 
   if (data.stock !== undefined) {
@@ -101,23 +206,85 @@ const updateProduct = async (id, data) => {
   }
 
   if (data.images !== undefined) {
-    updateData.images = Array.isArray(data.images)
+    updateData.images = Array.isArray(
+      data.images
+    )
       ? data.images
       : [];
   }
 
+  if (data.isActive !== undefined) {
+    updateData.isActive =
+      Boolean(data.isActive);
+  }
+
   return prisma.product.update({
     where: {
-      id: Number(id),
+      id: productId,
     },
     data: updateData,
   });
 };
 
 const deleteProduct = async (id) => {
-  return prisma.product.delete({
+  const productId = Number(id);
+
+  const existingProduct =
+    await prisma.product.findUnique({
+      where: {
+        id: productId,
+      },
+      select: {
+        id: true,
+        isActive: true,
+      },
+    });
+
+  if (!existingProduct) {
+    return null;
+  }
+
+  if (!existingProduct.isActive) {
+    return prisma.product.findUnique({
+      where: {
+        id: productId,
+      },
+    });
+  }
+
+  return prisma.product.update({
     where: {
-      id: Number(id),
+      id: productId,
+    },
+    data: {
+      isActive: false,
+    },
+  });
+};
+
+const restoreProduct = async (id) => {
+  const productId = Number(id);
+
+  const existingProduct =
+    await prisma.product.findUnique({
+      where: {
+        id: productId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+  if (!existingProduct) {
+    return null;
+  }
+
+  return prisma.product.update({
+    where: {
+      id: productId,
+    },
+    data: {
+      isActive: true,
     },
   });
 };
@@ -125,7 +292,10 @@ const deleteProduct = async (id) => {
 export const productsService = {
   getProducts,
   getProductById,
+  getProductsForAdmin,
+  getProductByIdForAdmin,
   createProduct,
   updateProduct,
   deleteProduct,
+  restoreProduct,
 };

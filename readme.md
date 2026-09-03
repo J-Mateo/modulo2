@@ -46,14 +46,22 @@ https://backend-modulo2-api.onrender.com/api/docs/
 - Autorización basada en roles
 - Configuración CORS con credenciales
 - Gestión de usuarios y perfiles
-- CRUD de productos
+- CRUD administrativo de productos
+- Desactivación lógica de productos mediante `isActive`
 - Múltiples imágenes por producto
 - Carga de imágenes mediante Cloudinary
 - Búsqueda, filtrado y paginación de productos
 - Carrito de compra persistente
+- Un único carrito activo por usuario
+- Checkout transaccional
+- Control atómico de stock durante checkout
+- Protección frente a overselling concurrente
+- Creación de pedidos con snapshots comerciales
+- Importes monetarios almacenados mediante `Decimal(10,2)`
 - Wishlist persistente mediante MongoDB Atlas
 - Sistema de reseñas de productos
 - Manejo centralizado de errores HTTP
+- Serialización centralizada de datos de respuesta
 - Migraciones de PostgreSQL mediante Prisma Migrate
 - Documentación OpenAPI / Swagger
 - Tests automatizados con Jest y Supertest
@@ -63,11 +71,11 @@ https://backend-modulo2-api.onrender.com/api/docs/
 
 ## 🏗️ Arquitectura
 
-La aplicación utiliza dos sistemas de persistencia.
+La aplicación utiliza dos sistemas de persistencia con responsabilidades diferenciadas.
 
 ### PostgreSQL + Prisma
 
-Se utiliza para la información relacional de la aplicación:
+Se utiliza para la información relacional y transaccional:
 
 - Usuarios
 - Roles
@@ -77,7 +85,27 @@ Se utiliza para la información relacional de la aplicación:
 - Pedidos
 - Elementos de pedido
 
-Los modelos de pedidos forman parte del esquema de datos. La API completa de gestión de pedidos se encuentra pendiente de desarrollo.
+Las operaciones críticas de checkout se ejecutan mediante transacciones de Prisma sobre PostgreSQL.
+
+El dominio comercial mantiene la integridad de los pedidos independientemente de los cambios posteriores realizados sobre los productos. Cada `OrderItem` conserva un snapshot de la información relevante en el momento de la compra:
+
+- Nombre del producto
+- Imagen del producto
+- Precio de compra
+- Cantidad
+
+El identificador del producto en un elemento de pedido puede quedar desvinculado si el producto deja de existir, sin perder el histórico comercial del pedido.
+
+Los pedidos disponen actualmente de los estados:
+
+```text
+PENDING
+PAID
+CANCELLED
+REFUNDED
+```
+
+El checkout actual genera pedidos `PAID` para mantener la semántica existente mientras no existe una pasarela de pago externa. La integración futura con Stripe permitirá crear pedidos pendientes y confirmar el pago mediante webhooks.
 
 ### MongoDB Atlas + Mongoose
 
@@ -96,8 +124,8 @@ Se utiliza para el almacenamiento y distribución de imágenes de productos.
                               ▼
                          Express API
                               │
-               ┌──────────────┴──────────────┐
-               ▼                             ▼
+                ┌─────────────┴─────────────┐
+                ▼                           ▼
         PostgreSQL + Prisma          MongoDB + Mongoose
         ───────────────────          ──────────────────
         • Usuarios                   • Wishlists
@@ -107,8 +135,8 @@ Se utiliza para el almacenamiento y distribución de imágenes de productos.
         • CartItems
         • Pedidos
         • OrderItems
-               │
-               ▼
+                │
+                ▼
           Cloudinary CDN
           ──────────────
           • Imágenes de productos
@@ -121,14 +149,20 @@ Se utiliza para el almacenamiento y distribución de imágenes de productos.
 | Tecnología | Uso |
 | --- | --- |
 | Node.js | Runtime |
-| Express | Framework HTTP |
-| PostgreSQL | Base de datos relacional |
-| Prisma ORM | Acceso y migraciones de PostgreSQL |
+| Express 5 | Framework HTTP |
+| PostgreSQL | Base de datos relacional y transaccional |
+| Prisma 7 | ORM y migraciones de PostgreSQL |
+| PostgreSQL Adapter | Adaptador de Prisma para PostgreSQL |
 | MongoDB Atlas | Base de datos documental |
 | Mongoose | ODM para MongoDB |
 | JWT | Autenticación |
 | Cookie Parser | Lectura de cookies |
+| CORS | Control de orígenes y credenciales |
+| Helmet | Cabeceras de seguridad HTTP |
+| Express Rate Limit | Limitación de peticiones |
+| bcrypt | Hash de contraseñas |
 | Cloudinary | Gestión de imágenes |
+| Multer | Procesamiento de archivos |
 | Jest | Testing |
 | Supertest | Tests de integración HTTP |
 | Swagger / OpenAPI | Documentación de la API |
@@ -167,7 +201,7 @@ tests/
 - **Middlewares:** autenticación, autorización, control de caché, errores y otras operaciones intermedias.
 - **Models:** esquemas utilizados por MongoDB/Mongoose.
 - **Config:** configuración de servicios, bases de datos y entorno.
-- **Utils:** utilidades compartidas, errores y respuestas.
+- **Utils:** utilidades compartidas, errores, serialización y respuestas.
 - **Prisma:** esquema relacional y migraciones de PostgreSQL.
 
 ---
@@ -244,9 +278,19 @@ npx prisma migrate deploy
 
 ### 6. Iniciar el servidor
 
+Desarrollo:
+
 ```bash
 npm run dev
 ```
+
+Producción:
+
+```bash
+npm start
+```
+
+El servidor utiliza el puerto definido mediante `PORT`.
 
 ---
 
@@ -263,15 +307,54 @@ prisma/
 │   │   └── migration.sql
 │   ├── 20260825073233_make_user_name_required/
 │   │   └── migration.sql
-│   └── migration_lock.toml
+│   └── 20260903111751_harden_commerce_domain/
+│       └── migration.sql
 └── schema.prisma
 ```
+
+La migración de endurecimiento del dominio comercial incorpora, entre otras garantías:
+
+- Importes monetarios mediante `Decimal(10,2)`
+- Estado de los pedidos
+- Estado de activación de productos
+- Snapshots comerciales en `OrderItem`
+- Relación opcional entre `OrderItem` y `Product`
+- Restricciones de integridad del carrito
+- Índices para consultas frecuentes
+- Unicidad de producto dentro de un carrito
+- Un único carrito `ACTIVE` por usuario
 
 Para comprobar el estado de las migraciones:
 
 ```bash
 npx prisma migrate status
 ```
+
+---
+
+## 💰 Tratamiento de importes monetarios
+
+Los importes monetarios no utilizan números de coma flotante.
+
+Los precios de productos, totales de pedidos y precios históricos se almacenan en PostgreSQL mediante:
+
+```text
+Decimal(10,2)
+```
+
+Los cálculos de checkout utilizan `Prisma.Decimal` para evitar errores derivados de la aritmética binaria de JavaScript.
+
+En las respuestas HTTP los valores monetarios se serializan como strings con dos decimales.
+
+Ejemplo:
+
+```json
+{
+  "price": "26.00"
+}
+```
+
+Esto preserva la precisión y el formato monetario a través del contrato de la API.
 
 ---
 
@@ -415,6 +498,8 @@ En producción esta variable debe contener el dominio real del frontend.
 
 ## 📦 Productos
 
+El catálogo público solo expone productos activos.
+
 ### Obtener productos
 
 ```http
@@ -459,6 +544,8 @@ Ejemplo de respuesta:
 GET /api/products/:id
 ```
 
+Los productos inactivos no se exponen mediante el endpoint público.
+
 ### Crear producto
 
 ```http
@@ -475,13 +562,17 @@ PUT /api/products/:id
 
 Ruta protegida para usuarios con rol `ADMIN`.
 
-### Eliminar producto
+### Desactivar producto
 
 ```http
 DELETE /api/products/:id
 ```
 
 Ruta protegida para usuarios con rol `ADMIN`.
+
+La eliminación administrativa utiliza desactivación lógica mediante `isActive = false`.
+
+Esto permite retirar un producto del catálogo público sin eliminar físicamente información que pueda estar relacionada con carritos, pedidos o históricos comerciales.
 
 ---
 
@@ -542,13 +633,57 @@ La wishlist persiste entre sesiones porque se almacena en MongoDB y no en el alm
 
 ---
 
-## 🛒 Carrito
+## 🛒 Carrito y checkout
 
-La API incluye un carrito persistente asociado al usuario.
+La API incluye un carrito persistente asociado al usuario autenticado.
 
 Las rutas protegidas utilizan la identidad obtenida desde la cookie de autenticación.
 
 El carrito se almacena en PostgreSQL mediante Prisma.
+
+La base de datos garantiza que un usuario no pueda disponer simultáneamente de más de un carrito con estado `ACTIVE`.
+
+Cada producto solo puede aparecer una vez dentro del mismo carrito. Las nuevas unidades se gestionan mediante la cantidad del elemento correspondiente.
+
+### Checkout transaccional
+
+El checkout se ejecuta dentro de una transacción de Prisma.
+
+Durante la operación:
+
+1. Se obtiene el carrito activo.
+2. Se comprueba que contiene productos.
+3. Se valida la disponibilidad de cada producto.
+4. El stock se decrementa mediante operaciones condicionales atómicas.
+5. Se calcula el total utilizando `Prisma.Decimal`.
+6. Se crea el pedido.
+7. Se almacenan snapshots comerciales de cada producto.
+8. El carrito pasa a estado `CHECKED_OUT`.
+
+Si cualquier parte de la operación falla, la transacción se revierte y no se persiste un checkout parcial.
+
+La actualización condicional de stock evita que dos checkouts concurrentes puedan vender la misma última unidad.
+
+---
+
+## 📋 Pedidos
+
+Los pedidos se almacenan en PostgreSQL.
+
+Cada pedido conserva:
+
+- Usuario propietario
+- Total monetario
+- Estado
+- Fecha de creación
+- Fecha de actualización
+- Elementos comprados
+
+Cada elemento conserva el precio aplicado en el momento de la compra mediante `priceAtPurchase`, además del nombre e imagen del producto.
+
+Esto permite que el histórico del pedido siga siendo consistente aunque posteriormente cambien el nombre, el precio o la imagen del producto.
+
+La API completa de consulta y gestión del historial de pedidos continúa pendiente de desarrollo.
 
 ---
 
@@ -556,7 +691,7 @@ El carrito se almacena en PostgreSQL mediante Prisma.
 
 Las reseñas de productos se almacenan en MongoDB Atlas mediante Mongoose.
 
-Esta separación permite mantener en PostgreSQL los datos relacionales y utilizar MongoDB para información documental asociada a productos.
+Esta separación permite mantener en PostgreSQL los datos relacionales y transaccionales y utilizar MongoDB para información documental asociada a productos.
 
 ---
 
@@ -590,6 +725,8 @@ Los detalles internos de errores inesperados no deben exponerse al cliente en pr
 
 El proyecto incluye pruebas automatizadas con **Jest** y **Supertest**.
 
+Los tests se ejecutan secuencialmente mediante `--runInBand`.
+
 ### Ejecutar todos los tests
 
 ```bash
@@ -602,6 +739,7 @@ npm test
 - Users
 - Products
 - Cart
+- Commerce Domain
 - Wishlist
 - Health Check
 
@@ -625,6 +763,23 @@ Los tests comprueban, entre otros aspectos:
 - Acceso autenticado mediante cookies
 - Rechazo de peticiones no autenticadas
 
+### Dominio comercial verificado
+
+La suite comprueba garantías críticas del ecommerce:
+
+- Serialización monetaria con dos decimales
+- Conservación de ceros decimales
+- Exclusión de productos inactivos del catálogo público
+- Creación de snapshots comerciales durante checkout
+- Conservación del precio histórico de compra
+- Cálculo exacto mediante `Decimal`
+- Decremento de stock
+- Rollback ante stock insuficiente
+- Rechazo de productos inactivos en carrito
+- Protección frente a overselling concurrente
+
+La prueba de concurrencia ejecuta dos checkouts que compiten por una única unidad y verifica que solo uno puede completarse.
+
 ### Wishlist verificada
 
 Los tests comprueban:
@@ -639,8 +794,8 @@ Los tests comprueban:
 ### Resultado actual
 
 ```text
-Test Suites: 9 passed, 9 total
-Tests:       24 passed, 24 total
+Test Suites: 10 passed, 10 total
+Tests:       32 passed, 32 total
 Snapshots:   0 total
 ```
 
@@ -659,12 +814,20 @@ Actualmente están verificadas las siguientes funcionalidades:
 - ✅ Autorización mediante roles
 - ✅ CORS con credenciales
 - ✅ Eliminación de dependencia de tokens en `localStorage`
-- ✅ CRUD de productos
+- ✅ CRUD administrativo de productos
+- ✅ Desactivación lógica de productos
 - ✅ Múltiples imágenes por producto
 - ✅ Integración con Cloudinary
 - ✅ Búsqueda y filtrado de productos
 - ✅ Paginación de catálogo
 - ✅ Carrito persistente
+- ✅ Restricciones de integridad del carrito
+- ✅ Checkout transaccional
+- ✅ Control atómico de stock
+- ✅ Protección contra overselling concurrente
+- ✅ Creación de pedidos durante checkout
+- ✅ Snapshots comerciales de pedidos
+- ✅ Importes monetarios mediante `Decimal(10,2)`
 - ✅ Wishlist persistente
 - ✅ Reviews
 - ✅ Manejo centralizado de errores
@@ -681,11 +844,16 @@ Actualmente están verificadas las siguientes funcionalidades:
 
 Entre las siguientes funcionalidades previstas se encuentran:
 
+- Integración de pagos mediante Stripe
+- Confirmación de pagos mediante webhooks
 - API completa de pedidos
 - Historial de pedidos del usuario
-- Checkout completo
-- Control transaccional de stock durante checkout
-- Gestión de devoluciones
+- Gestión administrativa de estados de pedidos
+- Gestión de devoluciones y reembolsos
+- Restauración administrativa de productos desactivados
+- Mejora del aislamiento de la suite de tests mediante datos y entorno específicos de testing
+- Datos reproducibles de desarrollo mediante seed
+- Identificadores comerciales de producto como SKU y slug
 - Soporte al cliente
 - Preguntas frecuentes
 - Mejoras adicionales del perfil de usuario

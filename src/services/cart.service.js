@@ -1,4 +1,7 @@
+import { Prisma } from '@prisma/client';
+
 import prisma from '../config/prismaClient.js';
+
 import { AppError } from '../utils/AppError.js';
 import { ErrorSelector } from '../utils/errors.js';
 
@@ -7,67 +10,170 @@ const cartInclude = {
     include: {
       product: true,
     },
+    orderBy: {
+      createdAt: 'asc',
+    },
   },
 };
 
-const getOrCreateActiveCart = async (userId) => {
-  let cart = await prisma.cart.findFirst({
-    where: { userId, status: 'ACTIVE' },
-    include: cartInclude,
-  });
+const validatePositiveInteger = (
+  value,
+  errorMessage = 'Invalid numeric value'
+) => {
+  const parsedValue = Number(value);
 
-  if (!cart) {
-    cart = await prisma.cart.create({
-      data: { userId },
-      include: cartInclude,
-    });
+  if (
+    !Number.isInteger(parsedValue) ||
+    parsedValue <= 0
+  ) {
+    throw new AppError(
+      ErrorSelector.BAD_REQUEST,
+      errorMessage
+    );
   }
 
-  return cart;
+  return parsedValue;
 };
 
-const addItemToCart = async ({ userId, productId, quantity }) => {
-  const cleanProductId = Number(productId);
-  const cleanQuantity = Number(quantity);
+const findActiveCart = (
+  databaseClient,
+  userId
+) => {
+  return databaseClient.cart.findFirst({
+    where: {
+      userId,
+      status: 'ACTIVE',
+    },
+    include: cartInclude,
+  });
+};
 
-  if (
-    Number.isNaN(cleanProductId) ||
-    Number.isNaN(cleanQuantity) ||
-    cleanQuantity <= 0
-  ) {
-    throw new AppError(ErrorSelector.BAD_REQUEST);
+const getOrCreateActiveCart = async (
+  userId
+) => {
+  const cleanUserId =
+    validatePositiveInteger(
+      userId,
+      'Invalid user'
+    );
+
+  const existingCart =
+    await findActiveCart(
+      prisma,
+      cleanUserId
+    );
+
+  if (existingCart) {
+    return existingCart;
   }
 
-  const product = await prisma.product.findUnique({
-    where: { id: cleanProductId },
-    select: { id: true, stock: true },
-  });
+  try {
+    return await prisma.cart.create({
+      data: {
+        userId: cleanUserId,
+      },
+      include: cartInclude,
+    });
+  } catch (error) {
+    /*
+     * El índice parcial
+     * Cart_userId_active_unique
+     * protege contra dos creaciones concurrentes.
+     *
+     * Si otra petición creó el carrito entre el
+     * findFirst y el create, recuperamos ese carrito.
+     */
+    if (error?.code === 'P2002') {
+      const concurrentCart =
+        await findActiveCart(
+          prisma,
+          cleanUserId
+        );
+
+      if (concurrentCart) {
+        return concurrentCart;
+      }
+    }
+
+    throw error;
+  }
+};
+
+const addItemToCart = async ({
+  userId,
+  productId,
+  quantity,
+}) => {
+  const cleanUserId =
+    validatePositiveInteger(
+      userId,
+      'Invalid user'
+    );
+
+  const cleanProductId =
+    validatePositiveInteger(
+      productId,
+      'Invalid product'
+    );
+
+  const cleanQuantity =
+    validatePositiveInteger(
+      quantity,
+      'Quantity must be a positive integer'
+    );
+
+  const product =
+    await prisma.product.findFirst({
+      where: {
+        id: cleanProductId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        stock: true,
+      },
+    });
 
   if (!product) {
-    throw new AppError(ErrorSelector.NOT_FOUND);
+    throw new AppError(
+      ErrorSelector.NOT_FOUND,
+      'Product not found or unavailable'
+    );
   }
 
-  const cart = await getOrCreateActiveCart(userId);
+  const cart =
+    await getOrCreateActiveCart(
+      cleanUserId
+    );
 
-  const existingItem = cart.items.find(
-    (item) => item.productId === cleanProductId
-  );
+  const existingItem =
+    cart.items.find(
+      (item) =>
+        item.productId ===
+        cleanProductId
+    );
 
-  const currentQuantity = existingItem ? existingItem.quantity : 0;
-  const newQuantity = currentQuantity + cleanQuantity;
+  const currentQuantity =
+    existingItem?.quantity ?? 0;
 
-  if (
-    product.stock !== null &&
-    product.stock !== undefined &&
-    newQuantity > product.stock
-  ) {
-    throw new AppError(ErrorSelector.BAD_REQUEST, 'Insufficient stock');
+  const newQuantity =
+    currentQuantity + cleanQuantity;
+
+  if (newQuantity > product.stock) {
+    throw new AppError(
+      ErrorSelector.BAD_REQUEST,
+      'Insufficient stock'
+    );
   }
 
   if (existingItem) {
     await prisma.cartItem.update({
-      where: { id: existingItem.id },
-      data: { quantity: newQuantity },
+      where: {
+        id: existingItem.id,
+      },
+      data: {
+        quantity: newQuantity,
+      },
     });
   } else {
     await prisma.cartItem.create({
@@ -79,98 +185,219 @@ const addItemToCart = async ({ userId, productId, quantity }) => {
     });
   }
 
-  return getOrCreateActiveCart(userId);
+  return findActiveCart(
+    prisma,
+    cleanUserId
+  );
 };
 
-const removeItemFromCart = async ({ userId, itemId }) => {
-  const cleanItemId = Number(itemId);
+const removeItemFromCart = async ({
+  userId,
+  itemId,
+}) => {
+  const cleanUserId =
+    validatePositiveInteger(
+      userId,
+      'Invalid user'
+    );
 
-  if (Number.isNaN(cleanItemId)) {
-    throw new AppError(ErrorSelector.BAD_REQUEST);
+  const cleanItemId =
+    validatePositiveInteger(
+      itemId,
+      'Invalid cart item'
+    );
+
+  const cart =
+    await findActiveCart(
+      prisma,
+      cleanUserId
+    );
+
+  if (!cart) {
+    throw new AppError(
+      ErrorSelector.NOT_FOUND,
+      'Active cart not found'
+    );
   }
 
-  const cart = await getOrCreateActiveCart(userId);
+  const item =
+    await prisma.cartItem.findFirst({
+      where: {
+        id: cleanItemId,
+        cartId: cart.id,
+      },
+      select: {
+        id: true,
+      },
+    });
 
-  const item = await prisma.cartItem.findUnique({
-    where: { id: cleanItemId },
-    select: { cartId: true },
-  });
-
-  if (!item || item.cartId !== cart.id) {
-    throw new AppError(ErrorSelector.NOT_FOUND);
+  if (!item) {
+    throw new AppError(
+      ErrorSelector.NOT_FOUND,
+      'Cart item not found'
+    );
   }
 
   await prisma.cartItem.delete({
-    where: { id: cleanItemId },
+    where: {
+      id: item.id,
+    },
   });
 
-  return getOrCreateActiveCart(userId);
+  return findActiveCart(
+    prisma,
+    cleanUserId
+  );
 };
 
 const checkout = async (userId) => {
-  const cart = await getOrCreateActiveCart(userId);
+  const cleanUserId =
+    validatePositiveInteger(
+      userId,
+      'Invalid user'
+    );
 
-  if (cart.items.length === 0) {
-    throw new AppError(ErrorSelector.BAD_REQUEST);
-  }
+  return prisma.$transaction(
+    async (tx) => {
+      const cart =
+        await findActiveCart(
+          tx,
+          cleanUserId
+        );
 
-  for (const item of cart.items) {
-    if (
-      item.product.stock !== null &&
-      item.product.stock !== undefined &&
-      item.quantity > item.product.stock
-    ) {
-      throw new AppError(
-        ErrorSelector.BAD_REQUEST,
-        `Product ${item.product.name || item.productId} has insufficient stock`
-      );
+      if (
+        !cart ||
+        cart.items.length === 0
+      ) {
+        throw new AppError(
+          ErrorSelector.BAD_REQUEST,
+          'Cart is empty'
+        );
+      }
+
+      /*
+       * No utilizamos Number para calcular dinero.
+       * El total permanece como Decimal durante
+       * todo el proceso.
+       */
+      let total =
+        new Prisma.Decimal(0);
+
+      for (const item of cart.items) {
+        const product = item.product;
+
+        if (!product.isActive) {
+          throw new AppError(
+            ErrorSelector.BAD_REQUEST,
+            `${product.name} is no longer available`
+          );
+        }
+
+        /*
+         * UPDATE atómico:
+         *
+         * UPDATE Product
+         * SET stock = stock - quantity
+         * WHERE id = ?
+         *   AND stock >= quantity
+         *   AND isActive = true
+         *
+         * Dos checkouts simultáneos no pueden
+         * vender el mismo stock.
+         */
+        const stockUpdate =
+          await tx.product.updateMany({
+            where: {
+              id: product.id,
+              isActive: true,
+              stock: {
+                gte: item.quantity,
+              },
+            },
+            data: {
+              stock: {
+                decrement:
+                  item.quantity,
+              },
+            },
+          });
+
+        if (stockUpdate.count !== 1) {
+          throw new AppError(
+            ErrorSelector.BAD_REQUEST,
+            `Insufficient stock for ${product.name}`
+          );
+        }
+
+        const lineTotal =
+          product.price.mul(
+            item.quantity
+          );
+
+        total = total.add(
+          lineTotal
+        );
+      }
+
+      const order =
+        await tx.order.create({
+          data: {
+            userId: cleanUserId,
+
+            /*
+             * Temporalmente PAID porque el checkout
+             * actual representa compra completada.
+             * Stripe sustituirá esta transición:
+             *
+             * PENDING -> PAID
+             */
+            status: 'PAID',
+
+            total,
+
+            items: {
+              create:
+                cart.items.map(
+                  (item) => ({
+                    productId:
+                      item.productId,
+
+                    quantity:
+                      item.quantity,
+
+                    productName:
+                      item.product.name,
+
+                    productImage:
+                      item.product
+                        .images?.[0] ??
+                      null,
+
+                    priceAtPurchase:
+                      item.product.price,
+                  })
+                ),
+            },
+          },
+
+          include: {
+            items: true,
+          },
+        });
+
+      await tx.cart.update({
+        where: {
+          id: cart.id,
+        },
+        data: {
+          status:
+            'CHECKED_OUT',
+        },
+      });
+
+      return order;
     }
-  }
-
-  const total = cart.items.reduce((sum, item) => {
-    return sum + item.product.price * item.quantity;
-  }, 0);
-
-  const stockUpdates = cart.items.map((item) => {
-    return prisma.product.update({
-      where: { id: item.productId },
-      data: {
-        stock: {
-          decrement: item.quantity,
-        },
-      },
-    });
-  });
-
-  const [order] = await prisma.$transaction([
-    prisma.order.create({
-      data: {
-        userId,
-        total,
-        items: {
-          create: cart.items.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            priceAtPurchase: item.product.price,
-          })),
-        },
-      },
-      include: {
-        items: {
-          include: { product: true },
-        },
-      },
-    }),
-
-    prisma.cart.update({
-      where: { id: cart.id },
-      data: { status: 'CHECKED_OUT' },
-    }),
-
-    ...stockUpdates,
-  ]);
-
-  return order;
+  );
 };
 
 export const cartService = {
