@@ -20,10 +20,13 @@ const validatePositiveInteger = (
   value,
   errorMessage = 'Invalid numeric value'
 ) => {
-  const parsedValue = Number(value);
+  const parsedValue =
+    Number(value);
 
   if (
-    !Number.isInteger(parsedValue) ||
+    !Number.isInteger(
+      parsedValue
+    ) ||
     parsedValue <= 0
   ) {
     throw new AppError(
@@ -48,209 +51,327 @@ const findActiveCart = (
   });
 };
 
-const getOrCreateActiveCart = async (
-  userId
-) => {
-  const cleanUserId =
-    validatePositiveInteger(
-      userId,
-      'Invalid user'
-    );
+const getOrCreateActiveCart =
+  async (
+    userId
+  ) => {
+    const cleanUserId =
+      validatePositiveInteger(
+        userId,
+        'Invalid user'
+      );
 
-  const existingCart =
-    await findActiveCart(
-      prisma,
-      cleanUserId
-    );
+    const existingCart =
+      await findActiveCart(
+        prisma,
+        cleanUserId
+      );
 
-  if (existingCart) {
-    return existingCart;
-  }
-
-  try {
-    return await prisma.cart.create({
-      data: {
-        userId: cleanUserId,
-      },
-      include: cartInclude,
-    });
-  } catch (error) {
-    /*
-     * El índice parcial
-     * Cart_userId_active_unique
-     * protege contra dos creaciones concurrentes.
-     *
-     * Si otra petición creó el carrito entre el
-     * findFirst y el create, recuperamos ese carrito.
-     */
-    if (error?.code === 'P2002') {
-      const concurrentCart =
-        await findActiveCart(
-          prisma,
-          cleanUserId
-        );
-
-      if (concurrentCart) {
-        return concurrentCart;
-      }
+    if (existingCart) {
+      return existingCart;
     }
 
-    throw error;
-  }
-};
+    try {
+      return await prisma.cart.create({
+        data: {
+          userId:
+            cleanUserId,
+        },
+        include:
+          cartInclude,
+      });
+    } catch (error) {
+      if (
+        error?.code ===
+        'P2002'
+      ) {
+        const concurrentCart =
+          await findActiveCart(
+            prisma,
+            cleanUserId
+          );
 
-const addItemToCart = async ({
-  userId,
-  productId,
-  quantity,
-}) => {
-  const cleanUserId =
-    validatePositiveInteger(
-      userId,
-      'Invalid user'
-    );
+        if (
+          concurrentCart
+        ) {
+          return concurrentCart;
+        }
+      }
 
-  const cleanProductId =
-    validatePositiveInteger(
-      productId,
-      'Invalid product'
-    );
+      throw error;
+    }
+  };
 
-  const cleanQuantity =
-    validatePositiveInteger(
-      quantity,
-      'Quantity must be a positive integer'
-    );
+const addItemToCart =
+  async ({
+    userId,
+    productId,
+    quantity,
+  }) => {
+    const cleanUserId =
+      validatePositiveInteger(
+        userId,
+        'Invalid user'
+      );
 
-  const product =
-    await prisma.product.findFirst({
-      where: {
-        id: cleanProductId,
-        isActive: true,
-      },
-      select: {
-        id: true,
-        stock: true,
-      },
-    });
+    const cleanProductId =
+      validatePositiveInteger(
+        productId,
+        'Invalid product'
+      );
 
-  if (!product) {
-    throw new AppError(
-      ErrorSelector.NOT_FOUND,
-      'Product not found or unavailable'
-    );
-  }
+    const cleanQuantity =
+      validatePositiveInteger(
+        quantity,
+        'Quantity must be a positive integer'
+      );
 
-  const cart =
-    await getOrCreateActiveCart(
-      cleanUserId
-    );
+    const product =
+      await prisma.product.findFirst({
+        where: {
+          id:
+            cleanProductId,
+          isActive: true,
+        },
+        select: {
+          id: true,
+          stock: true,
+        },
+      });
 
-  const existingItem =
-    cart.items.find(
-      (item) =>
-        item.productId ===
-        cleanProductId
-    );
+    if (!product) {
+      throw new AppError(
+        ErrorSelector.NOT_FOUND,
+        'Product not found or unavailable'
+      );
+    }
 
-  const currentQuantity =
-    existingItem?.quantity ?? 0;
+    const cart =
+      await getOrCreateActiveCart(
+        cleanUserId
+      );
 
-  const newQuantity =
-    currentQuantity + cleanQuantity;
+    const existingItem =
+      cart.items.find(
+        (item) =>
+          item.productId ===
+          cleanProductId
+      );
 
-  if (newQuantity > product.stock) {
-    throw new AppError(
-      ErrorSelector.BAD_REQUEST,
-      'Insufficient stock'
-    );
-  }
+    const currentQuantity =
+      existingItem
+        ?.quantity ?? 0;
 
-  if (existingItem) {
-    await prisma.cartItem.update({
-      where: {
-        id: existingItem.id,
-      },
-      data: {
-        quantity: newQuantity,
-      },
-    });
-  } else {
-    await prisma.cartItem.create({
-      data: {
-        cartId: cart.id,
-        productId: cleanProductId,
-        quantity: cleanQuantity,
-      },
-    });
-  }
+    const newQuantity =
+      currentQuantity +
+      cleanQuantity;
 
-  return findActiveCart(
-    prisma,
-    cleanUserId
-  );
-};
+    if (
+      newQuantity >
+      product.stock
+    ) {
+      throw new AppError(
+        ErrorSelector.BAD_REQUEST,
+        'Insufficient stock'
+      );
+    }
 
-const removeItemFromCart = async ({
-  userId,
-  itemId,
-}) => {
-  const cleanUserId =
-    validatePositiveInteger(
-      userId,
-      'Invalid user'
-    );
+    if (existingItem) {
+      await prisma.cartItem.update({
+        where: {
+          id:
+            existingItem.id,
+        },
+        data: {
+          quantity:
+            newQuantity,
+        },
+      });
+    } else {
+      await prisma.cartItem.create({
+        data: {
+          cartId:
+            cart.id,
+          productId:
+            cleanProductId,
+          quantity:
+            cleanQuantity,
+        },
+      });
+    }
 
-  const cleanItemId =
-    validatePositiveInteger(
-      itemId,
-      'Invalid cart item'
-    );
-
-  const cart =
-    await findActiveCart(
+    return findActiveCart(
       prisma,
       cleanUserId
     );
+  };
 
-  if (!cart) {
-    throw new AppError(
-      ErrorSelector.NOT_FOUND,
-      'Active cart not found'
-    );
-  }
+const updateItemQuantity =
+  async ({
+    userId,
+    itemId,
+    quantity,
+  }) => {
+    const cleanUserId =
+      validatePositiveInteger(
+        userId,
+        'Invalid user'
+      );
 
-  const item =
-    await prisma.cartItem.findFirst({
+    const cleanItemId =
+      validatePositiveInteger(
+        itemId,
+        'Invalid cart item'
+      );
+
+    const cleanQuantity =
+      validatePositiveInteger(
+        quantity,
+        'Quantity must be a positive integer'
+      );
+
+    const cart =
+      await findActiveCart(
+        prisma,
+        cleanUserId
+      );
+
+    if (!cart) {
+      throw new AppError(
+        ErrorSelector.NOT_FOUND,
+        'Active cart not found'
+      );
+    }
+
+    const item =
+      await prisma.cartItem.findFirst({
+        where: {
+          id:
+            cleanItemId,
+          cartId:
+            cart.id,
+        },
+        include: {
+          product: {
+            select: {
+              id: true,
+              stock: true,
+              isActive: true,
+            },
+          },
+        },
+      });
+
+    if (!item) {
+      throw new AppError(
+        ErrorSelector.NOT_FOUND,
+        'Cart item not found'
+      );
+    }
+
+    if (
+      !item.product
+        .isActive
+    ) {
+      throw new AppError(
+        ErrorSelector.BAD_REQUEST,
+        'Product is no longer available'
+      );
+    }
+
+    if (
+      cleanQuantity >
+      item.product.stock
+    ) {
+      throw new AppError(
+        ErrorSelector.BAD_REQUEST,
+        'Insufficient stock'
+      );
+    }
+
+    await prisma.cartItem.update({
       where: {
-        id: cleanItemId,
-        cartId: cart.id,
+        id:
+          cleanItemId,
       },
-      select: {
-        id: true,
+      data: {
+        quantity:
+          cleanQuantity,
       },
     });
 
-  if (!item) {
-    throw new AppError(
-      ErrorSelector.NOT_FOUND,
-      'Cart item not found'
+    return findActiveCart(
+      prisma,
+      cleanUserId
     );
-  }
+  };
 
-  await prisma.cartItem.delete({
-    where: {
-      id: item.id,
-    },
-  });
+const removeItemFromCart =
+  async ({
+    userId,
+    itemId,
+  }) => {
+    const cleanUserId =
+      validatePositiveInteger(
+        userId,
+        'Invalid user'
+      );
 
-  return findActiveCart(
-    prisma,
-    cleanUserId
-  );
-};
+    const cleanItemId =
+      validatePositiveInteger(
+        itemId,
+        'Invalid cart item'
+      );
 
-const checkout = async (userId) => {
+    const cart =
+      await findActiveCart(
+        prisma,
+        cleanUserId
+      );
+
+    if (!cart) {
+      throw new AppError(
+        ErrorSelector.NOT_FOUND,
+        'Active cart not found'
+      );
+    }
+
+    const item =
+      await prisma.cartItem.findFirst({
+        where: {
+          id:
+            cleanItemId,
+          cartId:
+            cart.id,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (!item) {
+      throw new AppError(
+        ErrorSelector.NOT_FOUND,
+        'Cart item not found'
+      );
+    }
+
+    await prisma.cartItem.delete({
+      where: {
+        id:
+          item.id,
+      },
+    });
+
+    return findActiveCart(
+      prisma,
+      cleanUserId
+    );
+  };
+
+const checkout = async (
+  userId
+) => {
   const cleanUserId =
     validatePositiveInteger(
       userId,
@@ -267,7 +388,8 @@ const checkout = async (userId) => {
 
       if (
         !cart ||
-        cart.items.length === 0
+        cart.items.length ===
+          0
       ) {
         throw new AppError(
           ErrorSelector.BAD_REQUEST,
@@ -275,43 +397,36 @@ const checkout = async (userId) => {
         );
       }
 
-      /*
-       * No utilizamos Number para calcular dinero.
-       * El total permanece como Decimal durante
-       * todo el proceso.
-       */
       let total =
-        new Prisma.Decimal(0);
+        new Prisma.Decimal(
+          0
+        );
 
-      for (const item of cart.items) {
-        const product = item.product;
+      for (
+        const item of
+        cart.items
+      ) {
+        const product =
+          item.product;
 
-        if (!product.isActive) {
+        if (
+          !product.isActive
+        ) {
           throw new AppError(
             ErrorSelector.BAD_REQUEST,
             `${product.name} is no longer available`
           );
         }
 
-        /*
-         * UPDATE atómico:
-         *
-         * UPDATE Product
-         * SET stock = stock - quantity
-         * WHERE id = ?
-         *   AND stock >= quantity
-         *   AND isActive = true
-         *
-         * Dos checkouts simultáneos no pueden
-         * vender el mismo stock.
-         */
         const stockUpdate =
           await tx.product.updateMany({
             where: {
-              id: product.id,
+              id:
+                product.id,
               isActive: true,
               stock: {
-                gte: item.quantity,
+                gte:
+                  item.quantity,
               },
             },
             data: {
@@ -322,7 +437,10 @@ const checkout = async (userId) => {
             },
           });
 
-        if (stockUpdate.count !== 1) {
+        if (
+          stockUpdate.count !==
+          1
+        ) {
           throw new AppError(
             ErrorSelector.BAD_REQUEST,
             `Insufficient stock for ${product.name}`
@@ -334,52 +452,44 @@ const checkout = async (userId) => {
             item.quantity
           );
 
-        total = total.add(
-          lineTotal
-        );
+        total =
+          total.add(
+            lineTotal
+          );
       }
 
       const order =
         await tx.order.create({
           data: {
-            userId: cleanUserId,
-
-            /*
-             * Temporalmente PAID porque el checkout
-             * actual representa compra completada.
-             * Stripe sustituirá esta transición:
-             *
-             * PENDING -> PAID
-             */
-            status: 'PAID',
-
+            userId:
+              cleanUserId,
+            status:
+              'PAID',
             total,
-
             items: {
               create:
                 cart.items.map(
-                  (item) => ({
+                  (
+                    item
+                  ) => ({
                     productId:
                       item.productId,
-
                     quantity:
                       item.quantity,
-
                     productName:
-                      item.product.name,
-
+                      item.product
+                        .name,
                     productImage:
                       item.product
                         .images?.[0] ??
                       null,
-
                     priceAtPurchase:
-                      item.product.price,
+                      item.product
+                        .price,
                   })
                 ),
             },
           },
-
           include: {
             items: true,
           },
@@ -387,7 +497,8 @@ const checkout = async (userId) => {
 
       await tx.cart.update({
         where: {
-          id: cart.id,
+          id:
+            cart.id,
         },
         data: {
           status:
@@ -403,6 +514,7 @@ const checkout = async (userId) => {
 export const cartService = {
   getOrCreateActiveCart,
   addItemToCart,
+  updateItemQuantity,
   removeItemFromCart,
   checkout,
 };
