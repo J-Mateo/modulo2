@@ -36,4 +36,10 @@ router.post(
   cartController.checkout
 );
 
+router.post(
+  '/buy-now',
+  authenticate,
+  cartController.buyNow
+);
+
 export default router;

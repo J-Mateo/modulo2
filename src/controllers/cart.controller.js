@@ -30,8 +30,10 @@ const addItem = async (
       await cartService.addItemToCart({
         userId:
           req.user.userId,
+
         productId:
           req.body.productId,
+
         quantity:
           req.body.quantity,
       });
@@ -56,8 +58,10 @@ const updateItemQuantity =
         await cartService.updateItemQuantity({
           userId:
             req.user.userId,
+
           itemId:
             req.params.itemId,
+
           quantity:
             req.body.quantity,
         });
@@ -81,6 +85,7 @@ const removeItem = async (
       await cartService.removeItemFromCart({
         userId:
           req.user.userId,
+
         itemId:
           req.params.itemId,
       });
@@ -105,10 +110,41 @@ const checkout = async (
         req.user.userId
       );
 
-    return res.status(201).json({
-      success: true,
-      data: order,
-    });
+    return res
+      .status(201)
+      .json({
+        success: true,
+        data: order,
+      });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const buyNow = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const order =
+      await cartService.buyNow({
+        userId:
+          req.user.userId,
+
+        productId:
+          req.body.productId,
+
+        quantity:
+          req.body.quantity,
+      });
+
+    return res
+      .status(201)
+      .json({
+        success: true,
+        data: order,
+      });
   } catch (error) {
     next(error);
   }
@@ -120,4 +156,5 @@ export const cartController = {
   updateItemQuantity,
   removeItem,
   checkout,
+  buyNow,
 };

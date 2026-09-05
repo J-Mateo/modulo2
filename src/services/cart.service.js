@@ -47,7 +47,9 @@ const findActiveCart = (
       userId,
       status: 'ACTIVE',
     },
-    include: cartInclude,
+
+    include:
+      cartInclude,
   });
 };
 
@@ -77,6 +79,7 @@ const getOrCreateActiveCart =
           userId:
             cleanUserId,
         },
+
         include:
           cartInclude,
       });
@@ -131,8 +134,11 @@ const addItemToCart =
         where: {
           id:
             cleanProductId,
-          isActive: true,
+
+          isActive:
+            true,
         },
+
         select: {
           id: true,
           stock: true,
@@ -182,6 +188,7 @@ const addItemToCart =
           id:
             existingItem.id,
         },
+
         data: {
           quantity:
             newQuantity,
@@ -192,8 +199,10 @@ const addItemToCart =
         data: {
           cartId:
             cart.id,
+
           productId:
             cleanProductId,
+
           quantity:
             cleanQuantity,
         },
@@ -248,9 +257,11 @@ const updateItemQuantity =
         where: {
           id:
             cleanItemId,
+
           cartId:
             cart.id,
         },
+
         include: {
           product: {
             select: {
@@ -294,6 +305,7 @@ const updateItemQuantity =
         id:
           cleanItemId,
       },
+
       data: {
         quantity:
           cleanQuantity,
@@ -341,9 +353,11 @@ const removeItemFromCart =
         where: {
           id:
             cleanItemId,
+
           cartId:
             cart.id,
         },
+
         select: {
           id: true,
         },
@@ -423,12 +437,16 @@ const checkout = async (
             where: {
               id:
                 product.id,
-              isActive: true,
+
+              isActive:
+                true,
+
               stock: {
                 gte:
                   item.quantity,
               },
             },
+
             data: {
               stock: {
                 decrement:
@@ -463,9 +481,12 @@ const checkout = async (
           data: {
             userId:
               cleanUserId,
+
             status:
               'PAID',
+
             total,
+
             items: {
               create:
                 cart.items.map(
@@ -474,15 +495,19 @@ const checkout = async (
                   ) => ({
                     productId:
                       item.productId,
+
                     quantity:
                       item.quantity,
+
                     productName:
                       item.product
                         .name,
+
                     productImage:
                       item.product
                         .images?.[0] ??
                       null,
+
                     priceAtPurchase:
                       item.product
                         .price,
@@ -490,6 +515,7 @@ const checkout = async (
                 ),
             },
           },
+
           include: {
             items: true,
           },
@@ -500,11 +526,150 @@ const checkout = async (
           id:
             cart.id,
         },
+
         data: {
           status:
             'CHECKED_OUT',
         },
       });
+
+      return order;
+    }
+  );
+};
+
+const buyNow = async ({
+  userId,
+  productId,
+  quantity = 1,
+}) => {
+  const cleanUserId =
+    validatePositiveInteger(
+      userId,
+      'Invalid user'
+    );
+
+  const cleanProductId =
+    validatePositiveInteger(
+      productId,
+      'Invalid product'
+    );
+
+  const cleanQuantity =
+    validatePositiveInteger(
+      quantity,
+      'Quantity must be a positive integer'
+    );
+
+  return prisma.$transaction(
+    async (tx) => {
+      const product =
+        await tx.product.findFirst({
+          where: {
+            id:
+              cleanProductId,
+
+            isActive:
+              true,
+          },
+        });
+
+      if (!product) {
+        throw new AppError(
+          ErrorSelector.NOT_FOUND,
+          'Product not found or unavailable'
+        );
+      }
+
+      /*
+       * La comprobación de stock
+       * y el descuento se realizan
+       * de forma atómica.
+       */
+      const stockUpdate =
+        await tx.product.updateMany({
+          where: {
+            id:
+              cleanProductId,
+
+            isActive:
+              true,
+
+            stock: {
+              gte:
+                cleanQuantity,
+            },
+          },
+
+          data: {
+            stock: {
+              decrement:
+                cleanQuantity,
+            },
+          },
+        });
+
+      if (
+        stockUpdate.count !==
+        1
+      ) {
+        throw new AppError(
+          ErrorSelector.BAD_REQUEST,
+          `Insufficient stock for ${product.name}`
+        );
+      }
+
+      const total =
+        product.price.mul(
+          cleanQuantity
+        );
+
+      const order =
+        await tx.order.create({
+          data: {
+            userId:
+              cleanUserId,
+
+            status:
+              'PAID',
+
+            total,
+
+            items: {
+              create: {
+                productId:
+                  product.id,
+
+                quantity:
+                  cleanQuantity,
+
+                productName:
+                  product.name,
+
+                productImage:
+                  product
+                    .images?.[0] ??
+                  null,
+
+                priceAtPurchase:
+                  product.price,
+              },
+            },
+          },
+
+          include: {
+            items: true,
+          },
+        });
+
+      /*
+       * Comprar ahora es independiente
+       * del carrito normal.
+       *
+       * No añadimos CartItem.
+       * No vaciamos el carrito.
+       * No cambiamos su status.
+       */
 
       return order;
     }
@@ -517,4 +682,5 @@ export const cartService = {
   updateItemQuantity,
   removeItemFromCart,
   checkout,
+  buyNow,
 };
