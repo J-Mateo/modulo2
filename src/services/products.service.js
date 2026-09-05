@@ -1,5 +1,7 @@
 import prisma from '../config/prismaClient.js';
 
+import { restockAlertsService } from './restockAlerts.service.js';
+
 const buildPublicWhere = ({
   category = '',
   search = '',
@@ -9,7 +11,8 @@ const buildPublicWhere = ({
   };
 
   if (category) {
-    where.category = category;
+    where.category =
+      category;
   }
 
   if (search) {
@@ -37,257 +40,441 @@ const getProducts = async ({
   limit = 12,
   category = '',
   search = '',
+  sortBy = 'createdAt',
+  order = 'desc',
 } = {}) => {
-  const where = buildPublicWhere({
-    category,
-    search,
-  });
-
-  const skip = (page - 1) * limit;
-
-  const [products, total] =
-    await prisma.$transaction([
-      prisma.product.findMany({
-        where,
-        orderBy: {
-          createdAt: 'desc',
-        },
-        skip,
-        take: limit,
-      }),
-
-      prisma.product.count({
-        where,
-      }),
-    ]);
-
-  return {
-    products,
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages:
-        total === 0
-          ? 0
-          : Math.ceil(total / limit),
-    },
-  };
-};
-
-const getProductById = async (id) => {
-  return prisma.product.findFirst({
-    where: {
-      id: Number(id),
-      isActive: true,
-    },
-  });
-};
-
-const getProductByIdForAdmin = async (id) => {
-  return prisma.product.findUnique({
-    where: {
-      id: Number(id),
-    },
-  });
-};
-
-const getProductsForAdmin = async ({
-  page = 1,
-  limit = 20,
-  search = '',
-} = {}) => {
-  const where = {};
-
-  if (search) {
-    where.OR = [
-      {
-        name: {
-          contains: search,
-          mode: 'insensitive',
-        },
-      },
-      {
-        description: {
-          contains: search,
-          mode: 'insensitive',
-        },
-      },
-    ];
-  }
-
-  const skip = (page - 1) * limit;
-
-  const [products, total] =
-    await prisma.$transaction([
-      prisma.product.findMany({
-        where,
-        orderBy: {
-          createdAt: 'desc',
-        },
-        skip,
-        take: limit,
-      }),
-
-      prisma.product.count({
-        where,
-      }),
-    ]);
-
-  return {
-    products,
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages:
-        total === 0
-          ? 0
-          : Math.ceil(total / limit),
-    },
-  };
-};
-
-const createProduct = async (data) => {
-  return prisma.product.create({
-    data: {
-      name: data.name,
-      category: data.category || null,
-      description: data.description || null,
-      price: data.price,
-      stock: Number(data.stock),
-      images: Array.isArray(data.images)
-        ? data.images
-        : [],
-      isActive: true,
-    },
-  });
-};
-
-const updateProduct = async (id, data) => {
-  const productId = Number(id);
-
-  const existingProduct =
-    await prisma.product.findUnique({
-      where: {
-        id: productId,
-      },
-      select: {
-        id: true,
-      },
+  const where =
+    buildPublicWhere({
+      category,
+      search,
     });
 
-  if (!existingProduct) {
-    return null;
-  }
+  const skip =
+    (page - 1) *
+    limit;
 
-  const updateData = {};
+  const [
+    products,
+    total,
+  ] =
+    await prisma.$transaction([
+      prisma.product.findMany({
+        where,
 
-  if (data.name !== undefined) {
-    updateData.name = data.name;
-  }
+        orderBy: [
+          {
+            [sortBy]:
+              order,
+          },
+          {
+            id: 'asc',
+          },
+        ],
 
-  if (data.category !== undefined) {
-    updateData.category =
-      data.category || null;
-  }
+        skip,
+        take: limit,
+      }),
 
-  if (data.description !== undefined) {
-    updateData.description =
-      data.description || null;
-  }
+      prisma.product.count({
+        where,
+      }),
+    ]);
 
-  if (data.price !== undefined) {
-    updateData.price = data.price;
-  }
+  return {
+    products,
 
-  if (data.stock !== undefined) {
-    updateData.stock = Number(data.stock);
-  }
+    meta: {
+      page,
+      limit,
+      total,
 
-  if (data.images !== undefined) {
-    updateData.images = Array.isArray(
-      data.images
-    )
-      ? data.images
-      : [];
-  }
-
-  if (data.isActive !== undefined) {
-    updateData.isActive =
-      Boolean(data.isActive);
-  }
-
-  return prisma.product.update({
-    where: {
-      id: productId,
+      totalPages:
+        total === 0
+          ? 0
+          : Math.ceil(
+              total /
+                limit
+            ),
     },
-    data: updateData,
-  });
+  };
 };
 
-const deleteProduct = async (id) => {
-  const productId = Number(id);
-
-  const existingProduct =
-    await prisma.product.findUnique({
+const getProductById =
+  async (id) => {
+    return prisma.product.findFirst({
       where: {
-        id: productId,
-      },
-      select: {
-        id: true,
+        id: Number(id),
         isActive: true,
       },
     });
+  };
 
-  if (!existingProduct) {
-    return null;
-  }
-
-  if (!existingProduct.isActive) {
+const getProductByIdForAdmin =
+  async (id) => {
     return prisma.product.findUnique({
       where: {
-        id: productId,
+        id: Number(id),
       },
     });
-  }
+  };
 
-  return prisma.product.update({
-    where: {
-      id: productId,
-    },
-    data: {
-      isActive: false,
-    },
-  });
-};
+const getProductsForAdmin =
+  async ({
+    page = 1,
+    limit = 20,
+    search = '',
+  } = {}) => {
+    const where = {};
 
-const restoreProduct = async (id) => {
-  const productId = Number(id);
+    if (search) {
+      where.OR = [
+        {
+          name: {
+            contains:
+              search,
+            mode:
+              'insensitive',
+          },
+        },
+        {
+          description: {
+            contains:
+              search,
+            mode:
+              'insensitive',
+          },
+        },
+      ];
+    }
 
-  const existingProduct =
-    await prisma.product.findUnique({
+    const skip =
+      (page - 1) *
+      limit;
+
+    const [
+      products,
+      total,
+    ] =
+      await prisma.$transaction([
+        prisma.product.findMany({
+          where,
+
+          orderBy: {
+            createdAt:
+              'desc',
+          },
+
+          skip,
+          take: limit,
+        }),
+
+        prisma.product.count({
+          where,
+        }),
+      ]);
+
+    return {
+      products,
+
+      meta: {
+        page,
+        limit,
+        total,
+
+        totalPages:
+          total === 0
+            ? 0
+            : Math.ceil(
+                total /
+                  limit
+              ),
+      },
+    };
+  };
+
+const createProduct =
+  async (data) => {
+    return prisma.product.create({
+      data: {
+        name:
+          data.name,
+
+        category:
+          data.category ||
+          null,
+
+        description:
+          data.description ||
+          null,
+
+        price:
+          data.price,
+
+        stock:
+          Number(
+            data.stock
+          ),
+
+        images:
+          Array.isArray(
+            data.images
+          )
+            ? data.images
+            : [],
+
+        isActive:
+          true,
+      },
+    });
+  };
+
+const updateProduct =
+  async (
+    id,
+    data
+  ) => {
+    const productId =
+      Number(id);
+
+    const existingProduct =
+      await prisma.product.findUnique({
+        where: {
+          id:
+            productId,
+        },
+
+        select: {
+          id: true,
+          stock: true,
+          isActive: true,
+        },
+      });
+
+    if (!existingProduct) {
+      return null;
+    }
+
+    const updateData = {};
+
+    if (
+      data.name !==
+      undefined
+    ) {
+      updateData.name =
+        data.name;
+    }
+
+    if (
+      data.category !==
+      undefined
+    ) {
+      updateData.category =
+        data.category ||
+        null;
+    }
+
+    if (
+      data.description !==
+      undefined
+    ) {
+      updateData.description =
+        data.description ||
+        null;
+    }
+
+    if (
+      data.price !==
+      undefined
+    ) {
+      updateData.price =
+        data.price;
+    }
+
+    if (
+      data.stock !==
+      undefined
+    ) {
+      updateData.stock =
+        Number(
+          data.stock
+        );
+    }
+
+    if (
+      data.images !==
+      undefined
+    ) {
+      updateData.images =
+        Array.isArray(
+          data.images
+        )
+          ? data.images
+          : [];
+    }
+
+    if (
+      data.isActive !==
+      undefined
+    ) {
+      updateData.isActive =
+        Boolean(
+          data.isActive
+        );
+    }
+
+    const updatedProduct =
+      await prisma.product.update({
+        where: {
+          id:
+            productId,
+        },
+
+        data:
+          updateData,
+      });
+
+    /*
+     * Solo enviamos alertas cuando hay
+     * una reposición REAL:
+     *
+     * 0 unidades -> una o más unidades
+     *
+     * No enviamos:
+     *
+     * 5 -> 8
+     * 8 -> 10
+     * 0 -> 0
+     */
+    const wasOutOfStock =
+      existingProduct.stock <= 0;
+
+    const isNowAvailable =
+      updatedProduct.stock > 0;
+
+    const stockWasUpdated =
+      data.stock !==
+      undefined;
+
+    const shouldNotify =
+      stockWasUpdated &&
+      wasOutOfStock &&
+      isNowAvailable &&
+      updatedProduct.isActive;
+
+    if (shouldNotify) {
+      try {
+        const result =
+          await restockAlertsService
+            .notifyPendingAlerts(
+              updatedProduct
+            );
+
+        if (
+          result.notified > 0 ||
+          result.failed > 0
+        ) {
+          console.log(
+            `Restock notifications for product ${updatedProduct.id}: ${result.notified} sent, ${result.failed} failed`
+          );
+        }
+      } catch (error) {
+        /*
+         * El producto ya ha sido repuesto.
+         *
+         * Un fallo del proveedor de correo
+         * no debe revertir la actualización
+         * de stock.
+         */
+        console.error(
+          'Restock notification error:',
+          error?.message ||
+            error
+        );
+      }
+    }
+
+    return updatedProduct;
+  };
+
+const deleteProduct =
+  async (id) => {
+    const productId =
+      Number(id);
+
+    const existingProduct =
+      await prisma.product.findUnique({
+        where: {
+          id:
+            productId,
+        },
+
+        select: {
+          id: true,
+          isActive: true,
+        },
+      });
+
+    if (!existingProduct) {
+      return null;
+    }
+
+    if (
+      !existingProduct.isActive
+    ) {
+      return prisma.product.findUnique({
+        where: {
+          id:
+            productId,
+        },
+      });
+    }
+
+    return prisma.product.update({
       where: {
-        id: productId,
+        id:
+          productId,
       },
-      select: {
-        id: true,
+
+      data: {
+        isActive:
+          false,
       },
     });
+  };
 
-  if (!existingProduct) {
-    return null;
-  }
+const restoreProduct =
+  async (id) => {
+    const productId =
+      Number(id);
 
-  return prisma.product.update({
-    where: {
-      id: productId,
-    },
-    data: {
-      isActive: true,
-    },
-  });
-};
+    const existingProduct =
+      await prisma.product.findUnique({
+        where: {
+          id:
+            productId,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!existingProduct) {
+      return null;
+    }
+
+    return prisma.product.update({
+      where: {
+        id:
+          productId,
+      },
+
+      data: {
+        isActive:
+          true,
+      },
+    });
+  };
 
 export const productsService = {
   getProducts,

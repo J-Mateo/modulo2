@@ -2,14 +2,27 @@ import { Prisma } from '@prisma/client';
 
 import { productsService } from '../services/products.service.js';
 import { cloudinaryService } from '../services/cloudinary.service.js';
+import { restockAlertsService } from '../services/restockAlerts.service.js';
 
 import { AppError } from '../utils/AppError.js';
 import { ErrorSelector } from '../utils/errors.js';
 import { sendSuccess } from '../utils/responses.js';
 
-const MAX_PRICE = new Prisma.Decimal(
-  '99999999.99'
-);
+const ALLOWED_SORT_FIELDS = [
+  'createdAt',
+  'price',
+  'name',
+];
+
+const ALLOWED_SORT_ORDERS = [
+  'asc',
+  'desc',
+];
+
+const MAX_PRICE =
+  new Prisma.Decimal(
+    '99999999.99'
+  );
 
 const parsePositiveInteger = (
   value,
@@ -23,7 +36,8 @@ const parsePositiveInteger = (
     return defaultValue;
   }
 
-  const parsedValue = Number(value);
+  const parsedValue =
+    Number(value);
 
   if (
     !Number.isInteger(parsedValue) ||
@@ -39,14 +53,19 @@ const parsePositiveInteger = (
   return parsedValue;
 };
 
-const parseProductId = (value) =>
+const parseProductId = (
+  value
+) =>
   parsePositiveInteger(
     value,
     undefined
   );
 
-const parseStock = (value) => {
-  const stock = Number(value);
+const parseStock = (
+  value
+) => {
+  const stock =
+    Number(value);
 
   if (
     !Number.isInteger(stock) ||
@@ -61,7 +80,9 @@ const parseStock = (value) => {
   return stock;
 };
 
-const parsePrice = (value) => {
+const parsePrice = (
+  value
+) => {
   if (
     typeof value !== 'string' &&
     typeof value !== 'number'
@@ -75,22 +96,6 @@ const parsePrice = (value) => {
   const normalizedValue =
     String(value).trim();
 
-  /*
-   * Contrato monetario:
-   *
-   * 10
-   * 10.5
-   * 10.50
-   *
-   * son válidos.
-   *
-   * Rechazamos:
-   * 10.999
-   * -2
-   * NaN
-   * Infinity
-   * notación científica
-   */
   if (
     !/^\d+(?:\.\d{1,2})?$/.test(
       normalizedValue
@@ -131,16 +136,22 @@ const normalizeOptionalString = (
     return undefined;
   }
 
-  if (typeof value !== 'string') {
+  if (
+    typeof value !== 'string'
+  ) {
     throw new AppError(
       ErrorSelector.BAD_REQUEST,
       'Invalid text value'
     );
   }
 
-  const normalized = value.trim();
+  const normalized =
+    value.trim();
 
-  if (normalized.length > maxLength) {
+  if (
+    normalized.length >
+    maxLength
+  ) {
     throw new AppError(
       ErrorSelector.BAD_REQUEST,
       'Text value is too long'
@@ -150,7 +161,9 @@ const normalizeOptionalString = (
   return normalized;
 };
 
-const normalizeImages = (images) => {
+const normalizeImages = (
+  images
+) => {
   if (
     images === undefined ||
     images === null ||
@@ -164,7 +177,9 @@ const normalizeImages = (images) => {
       ? [images]
       : images;
 
-  if (!Array.isArray(normalized)) {
+  if (
+    !Array.isArray(normalized)
+  ) {
     throw new AppError(
       ErrorSelector.BAD_REQUEST,
       'Images must be an array'
@@ -176,7 +191,10 @@ const normalizeImages = (images) => {
       (image) =>
         typeof image === 'string'
     )
-    .map((image) => image.trim())
+    .map(
+      (image) =>
+        image.trim()
+    )
     .filter(Boolean);
 };
 
@@ -204,7 +222,10 @@ const validateCreatePayload = (
   const normalizedName =
     name.trim();
 
-  if (normalizedName.length > 150) {
+  if (
+    normalizedName.length >
+    150
+  ) {
     throw new AppError(
       ErrorSelector.BAD_REQUEST,
       'Product name is too long'
@@ -212,9 +233,14 @@ const validateCreatePayload = (
   }
 
   return {
-    name: normalizedName,
-    price: parsePrice(price),
-    stock: parseStock(stock),
+    name:
+      normalizedName,
+
+    price:
+      parsePrice(price),
+
+    stock:
+      parseStock(stock),
 
     category:
       normalizeOptionalString(
@@ -264,6 +290,20 @@ const getProducts = async (
         ? req.query.search.trim()
         : '';
 
+    const sortBy =
+      typeof req.query.sortBy ===
+      'string'
+        ? req.query.sortBy.trim()
+        : 'createdAt';
+
+    const order =
+      typeof req.query.order ===
+      'string'
+        ? req.query.order
+            .trim()
+            .toLowerCase()
+        : 'desc';
+
     if (
       category.length > 50 ||
       search.length > 100
@@ -274,17 +314,35 @@ const getProducts = async (
       );
     }
 
+    if (
+      !ALLOWED_SORT_FIELDS.includes(
+        sortBy
+      ) ||
+      !ALLOWED_SORT_ORDERS.includes(
+        order
+      )
+    ) {
+      throw new AppError(
+        ErrorSelector.BAD_REQUEST,
+        'Invalid sorting parameters'
+      );
+    }
+
     const result =
       await productsService.getProducts({
         page,
         limit,
         category,
         search,
+        sortBy,
+        order,
       });
 
     return sendSuccess(res, {
-      data: result.products,
-      meta: result.meta,
+      data:
+        result.products,
+      meta:
+        result.meta,
     });
   } catch (error) {
     next(error);
@@ -297,9 +355,10 @@ const getProductById = async (
   next
 ) => {
   try {
-    const id = parseProductId(
-      req.params.id
-    );
+    const id =
+      parseProductId(
+        req.params.id
+      );
 
     const product =
       await productsService.getProductById(
@@ -319,6 +378,107 @@ const getProductById = async (
     next(error);
   }
 };
+
+const getRestockAlert = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const productId =
+      parseProductId(
+        req.params.id
+      );
+
+    const alert =
+      await restockAlertsService.getSubscription({
+        userId:
+          req.user.userId,
+        productId,
+      });
+
+    return sendSuccess(res, {
+      data: {
+        subscribed:
+          alert?.status ===
+          'PENDING',
+
+        alert:
+          alert ?? null,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const subscribeRestockAlert =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const productId =
+        parseProductId(
+          req.params.id
+        );
+
+      const alert =
+        await restockAlertsService.subscribe({
+          userId:
+            req.user.userId,
+          productId,
+        });
+
+      return sendSuccess(res, {
+        statusCode: 201,
+
+        data: {
+          subscribed: true,
+          alert,
+        },
+
+        message:
+          'Restock alert activated',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+const cancelRestockAlert =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const productId =
+        parseProductId(
+          req.params.id
+        );
+
+      const alert =
+        await restockAlertsService.cancel({
+          userId:
+            req.user.userId,
+          productId,
+        });
+
+      return sendSuccess(res, {
+        data: {
+          subscribed: false,
+          alert,
+        },
+
+        message:
+          'Restock alert cancelled',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 
 const createProduct = async (
   req,
@@ -368,14 +528,17 @@ const updateProduct = async (
   next
 ) => {
   try {
-    const id = parseProductId(
-      req.params.id
-    );
+    const id =
+      parseProductId(
+        req.params.id
+      );
 
-    const dataToUpdate = {};
+    const dataToUpdate =
+      {};
 
     if (
-      req.body.name !== undefined
+      req.body.name !==
+      undefined
     ) {
       if (
         typeof req.body.name !==
@@ -391,18 +554,22 @@ const updateProduct = async (
       const name =
         req.body.name.trim();
 
-      if (name.length > 150) {
+      if (
+        name.length > 150
+      ) {
         throw new AppError(
           ErrorSelector.BAD_REQUEST,
           'Product name is too long'
         );
       }
 
-      dataToUpdate.name = name;
+      dataToUpdate.name =
+        name;
     }
 
     if (
-      req.body.price !== undefined
+      req.body.price !==
+      undefined
     ) {
       dataToUpdate.price =
         parsePrice(
@@ -411,7 +578,8 @@ const updateProduct = async (
     }
 
     if (
-      req.body.stock !== undefined
+      req.body.stock !==
+      undefined
     ) {
       dataToUpdate.stock =
         parseStock(
@@ -444,7 +612,8 @@ const updateProduct = async (
     let images;
 
     if (
-      req.body.images !== undefined
+      req.body.images !==
+      undefined
     ) {
       images =
         normalizeImages(
@@ -470,7 +639,8 @@ const updateProduct = async (
         {
           ...dataToUpdate,
 
-          ...(images !== undefined && {
+          ...(images !==
+            undefined && {
             images,
           }),
         }
@@ -483,7 +653,8 @@ const updateProduct = async (
     }
 
     return sendSuccess(res, {
-      data: updatedProduct,
+      data:
+        updatedProduct,
     });
   } catch (error) {
     next(error);
@@ -496,9 +667,10 @@ const deleteProduct = async (
   next
 ) => {
   try {
-    const id = parseProductId(
-      req.params.id
-    );
+    const id =
+      parseProductId(
+        req.params.id
+      );
 
     const deletedProduct =
       await productsService.deleteProduct(
@@ -512,7 +684,9 @@ const deleteProduct = async (
     }
 
     return sendSuccess(res, {
-      data: deletedProduct,
+      data:
+        deletedProduct,
+
       message:
         'Product deactivated successfully',
     });
@@ -524,6 +698,9 @@ const deleteProduct = async (
 export const productsController = {
   getProducts,
   getProductById,
+  getRestockAlert,
+  subscribeRestockAlert,
+  cancelRestockAlert,
   createProduct,
   updateProduct,
   deleteProduct,
