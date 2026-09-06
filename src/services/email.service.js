@@ -1,12 +1,14 @@
+import env from '../config/env.js';
+
 const RESEND_API_URL =
   'https://api.resend.com/emails';
 
 const getEmailConfig = () => {
   const apiKey =
-    process.env.RESEND_API_KEY;
+    env.RESEND_API_KEY;
 
   const from =
-    process.env.EMAIL_FROM;
+    env.EMAIL_FROM;
 
   if (!apiKey) {
     throw new Error(
@@ -94,10 +96,10 @@ const sendRestockEmail = async ({
   product,
 }) => {
   const frontendUrl =
-    (
-      process.env.FRONTEND_URL ||
-      'http://localhost:5173'
-    ).replace(/\/$/, '');
+    env.FRONTEND_URL.replace(
+      /\/$/,
+      ''
+    );
 
   const productUrl =
     `${frontendUrl}/products/${product.id}`;
@@ -125,9 +127,11 @@ const sendRestockEmail = async ({
 
     html: `
       <!doctype html>
+
       <html lang="es">
         <head>
           <meta charset="utf-8" />
+
           <meta
             name="viewport"
             content="width=device-width, initial-scale=1"
@@ -189,9 +193,11 @@ const sendRestockEmail = async ({
                   ? `${safeName}, `
                   : ''
               }el producto
+
               <strong>
                 ${safeProductName}
               </strong>
+
               vuelve a tener stock.
             </p>
 
