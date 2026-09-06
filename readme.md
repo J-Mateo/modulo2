@@ -60,6 +60,8 @@ https://backend-modulo2-api.onrender.com/api/docs/
 - Importes monetarios almacenados mediante `Decimal(10,2)`
 - Wishlist persistente mediante MongoDB Atlas
 - Sistema de reseñas de productos
+- Alertas de reposición persistentes
+- Notificaciones de reposición por email mediante Resend
 - Manejo centralizado de errores HTTP
 - Serialización centralizada de datos de respuesta
 - Migraciones de PostgreSQL mediante Prisma Migrate
@@ -84,6 +86,7 @@ Se utiliza para la información relacional y transaccional:
 - Elementos del carrito
 - Pedidos
 - Elementos de pedido
+- Alertas de reposición
 
 Las operaciones críticas de checkout se ejecutan mediante transacciones de Prisma sobre PostgreSQL.
 
@@ -118,6 +121,10 @@ Se utiliza para información documental:
 
 Se utiliza para el almacenamiento y distribución de imágenes de productos.
 
+### Resend
+
+Se utiliza para el envío de emails transaccionales asociados a las alertas de reposición.
+
 ```text
                          Cliente HTTP
                               │
@@ -135,11 +142,13 @@ Se utiliza para el almacenamiento y distribución de imágenes de productos.
         • CartItems
         • Pedidos
         • OrderItems
+        • RestockAlerts
                 │
                 ▼
-          Cloudinary CDN
-          ──────────────
-          • Imágenes de productos
+          Servicios externos
+          ─────────────────
+          • Cloudinary
+          • Resend
 ```
 
 ---
@@ -162,6 +171,7 @@ Se utiliza para el almacenamiento y distribución de imágenes de productos.
 | Express Rate Limit | Limitación de peticiones |
 | bcrypt | Hash de contraseñas |
 | Cloudinary | Gestión de imágenes |
+| Resend | Envío de emails transaccionales |
 | Multer | Procesamiento de archivos |
 | Jest | Testing |
 | Supertest | Tests de integración HTTP |
@@ -231,6 +241,9 @@ FRONTEND_URL="http://localhost:5173"
 CLOUDINARY_CLOUD_NAME="your_cloud_name"
 CLOUDINARY_API_KEY="your_api_key"
 CLOUDINARY_API_SECRET="your_api_secret"
+
+RESEND_API_KEY="your_resend_api_key"
+EMAIL_FROM="Rilmar Tech <onboarding@resend.dev>"
 ```
 
 ---
@@ -252,7 +265,7 @@ npm install
 
 ### 3. Configurar las variables de entorno
 
-Crear el archivo `.env` con las variables necesarias para PostgreSQL, MongoDB, JWT, frontend y Cloudinary.
+Crear el archivo `.env` con las variables necesarias para PostgreSQL, MongoDB, JWT, frontend, Cloudinary y Resend.
 
 ### 4. Generar Prisma Client
 
@@ -576,6 +589,69 @@ Esto permite retirar un producto del catálogo público sin eliminar físicament
 
 ---
 
+## 🔔 Alertas de reposición
+
+Los usuarios autenticados pueden solicitar una notificación cuando un producto agotado vuelva a estar disponible.
+
+Las alertas se almacenan en PostgreSQL mediante Prisma y pueden encontrarse en los siguientes estados:
+
+```text
+PENDING
+NOTIFIED
+CANCELLED
+```
+
+### Consultar alerta
+
+```http
+GET /api/products/:id/restock-alert
+```
+
+Requiere autenticación.
+
+### Activar alerta
+
+```http
+POST /api/products/:id/restock-alert
+```
+
+La suscripción solo puede activarse para productos activos sin stock.
+
+Si ya existe una alerta para el mismo usuario y producto, la operación reutiliza el registro existente y lo devuelve al estado `PENDING`.
+
+### Cancelar alerta
+
+```http
+DELETE /api/products/:id/restock-alert
+```
+
+La cancelación establece la alerta como `CANCELLED`.
+
+### Notificación de reposición
+
+Cuando un administrador actualiza un producto y el stock pasa de agotado a disponible:
+
+```text
+0 → stock positivo
+```
+
+el backend busca las alertas `PENDING` asociadas al producto y envía un email transaccional mediante Resend.
+
+Una notificación enviada correctamente cambia la alerta a `NOTIFIED` y registra `notifiedAt`.
+
+Si el proveedor de email falla, la actualización del stock no se revierte y la alerta permanece `PENDING`.
+
+Los incrementos de stock de un producto que ya estaba disponible no generan nuevas notificaciones.
+
+```text
+0 → 5  envía notificación
+5 → 8  no envía una nueva notificación
+```
+
+El contenido dinámico incluido en el HTML del email se escapa antes del envío.
+
+---
+
 ## 🖼️ Imágenes de productos
 
 Los productos admiten múltiples imágenes mediante el campo:
@@ -745,9 +821,12 @@ npm test
 
 ### Tests unitarios
 
-- Auth Service
+- Password hashing
 - Reviews Service
 - Wishlist Service
+- Products Service
+- Restock Alerts Service
+- Email Service
 
 ### Autenticación verificada
 
@@ -791,11 +870,28 @@ Los tests comprueban:
 - Eliminar productos mediante toggle
 - Ausencia de información interna de MongoDB en la respuesta
 
+### Alertas de reposición verificadas
+
+Los tests comprueban:
+
+- Detección de la transición de stock agotado a disponible
+- Ausencia de notificaciones cuando el producto ya tenía stock
+- Ausencia de notificaciones para productos inactivos
+- Procesamiento de alertas pendientes
+- Cambio a `NOTIFIED` después de un envío correcto
+- Permanencia en `PENDING` cuando el envío falla
+- Continuación del procesamiento cuando falla una notificación
+- Integración HTTP con Resend mediante mocks
+- Manejo de errores del proveedor
+- Validación de configuración de email
+- Generación del enlace al producto
+- Escape del contenido HTML dinámico
+
 ### Resultado actual
 
 ```text
-Test Suites: 10 passed, 10 total
-Tests:       32 passed, 32 total
+Test Suites: 13 passed, 13 total
+Tests:       60 passed, 60 total
 Snapshots:   0 total
 ```
 
@@ -830,6 +926,10 @@ Actualmente están verificadas las siguientes funcionalidades:
 - ✅ Importes monetarios mediante `Decimal(10,2)`
 - ✅ Wishlist persistente
 - ✅ Reviews
+- ✅ Alertas de reposición persistentes
+- ✅ Emails transaccionales de reposición mediante Resend
+- ✅ Notificación automática al pasar de stock agotado a disponible
+- ✅ Gestión de fallos de email sin revertir la actualización de stock
 - ✅ Manejo centralizado de errores
 - ✅ Prisma Migrate
 - ✅ PostgreSQL
@@ -864,4 +964,4 @@ Entre las siguientes funcionalidades previstas se encuentran:
 
 **Jessica Mateo**
 
-Proyecto desarrollado de forma individual como práctica de desarrollo backend con Node.js, Express, PostgreSQL, MongoDB, Prisma, Mongoose, JWT, Cloudinary, Jest y Supertest.
+Proyecto desarrollado de forma individual como práctica de desarrollo backend con Node.js, Express, PostgreSQL, MongoDB, Prisma, Mongoose, JWT, Cloudinary, Resend, Jest y Supertest.
