@@ -60,16 +60,15 @@ describe('Products endpoints', () => {
   });
 
   it('GET /api/products/:id should return one product if product exists', async () => {
-    const productsResponse =
-      await request(app).get(
-        '/api/products'
-      );
-
-    const productId =
-      productsResponse.body.data[0].id;
+    const product =
+      await createTestProduct({
+        name: `Product detail ${Date.now()}`,
+        price: '49.99',
+        category: 'Test',
+      });
 
     const response = await request(app).get(
-      `/api/products/${productId}`
+      `/api/products/${product.id}`
     );
 
     expect(response.statusCode).toBe(200);
@@ -77,7 +76,7 @@ describe('Products endpoints', () => {
 
     expect(
       response.body.data
-    ).toHaveProperty('id', productId);
+    ).toHaveProperty('id', product.id);
 
     expect(
       response.body.data
