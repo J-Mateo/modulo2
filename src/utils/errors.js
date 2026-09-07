@@ -4,6 +4,7 @@ export const ErrorSelector = {
   FORBIDDEN: 'FORBIDDEN',
   NOT_FOUND: 'NOT_FOUND',
   CONFLICT: 'CONFLICT',
+  TOO_MANY_REQUESTS: 'TOO_MANY_REQUESTS',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
 };
 
@@ -12,22 +13,32 @@ export const errors = {
     statusCode: 400,
     message: 'Invalid request data',
   },
+
   [ErrorSelector.UNAUTHORIZED]: {
     statusCode: 401,
     message: 'Unauthorized',
   },
+
   [ErrorSelector.FORBIDDEN]: {
     statusCode: 403,
     message: 'Forbidden',
   },
+
   [ErrorSelector.NOT_FOUND]: {
     statusCode: 404,
     message: 'Resource not found',
   },
+
   [ErrorSelector.CONFLICT]: {
     statusCode: 409,
     message: 'Resource already exists',
   },
+
+  [ErrorSelector.TOO_MANY_REQUESTS]: {
+    statusCode: 429,
+    message: 'Too many requests',
+  },
+
   [ErrorSelector.INTERNAL_ERROR]: {
     statusCode: 500,
     message: 'Internal server error',
