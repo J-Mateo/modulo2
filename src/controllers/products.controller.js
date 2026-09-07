@@ -12,11 +12,28 @@ const ALLOWED_SORT_FIELDS = [
   'createdAt',
   'price',
   'name',
+  'availability',
 ];
 
 const ALLOWED_SORT_ORDERS = [
   'asc',
   'desc',
+];
+
+const ALLOWED_AVAILABILITY_FILTERS = [
+  'inStock',
+  'outOfStock',
+];
+
+const ALLOWED_ADMIN_STATUSES = [
+  'active',
+  'inactive',
+];
+
+const ALLOWED_ADMIN_STOCK_FILTERS = [
+  'inStock',
+  'lowStock',
+  'outOfStock',
 ];
 
 const MAX_PRICE =
@@ -123,6 +140,20 @@ const parsePrice = (
   }
 
   return price;
+};
+
+const parseOptionalPrice = (
+  value
+) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ''
+  ) {
+    return undefined;
+  }
+
+  return parsePrice(value);
 };
 
 const normalizeOptionalString = (
@@ -256,6 +287,29 @@ const validateCreatePayload = (
   };
 };
 
+const uploadProductImages = async (
+  files = []
+) => {
+  if (!files.length) {
+    return [];
+  }
+
+  const uploads =
+    await Promise.all(
+      files.map(
+        (file) =>
+          cloudinaryService.uploadImage(
+            file
+          )
+      )
+    );
+
+  return uploads.map(
+    (result) =>
+      result.secure_url
+  );
+};
+
 const getProducts = async (
   req,
   res,
@@ -290,6 +344,22 @@ const getProducts = async (
         ? req.query.search.trim()
         : '';
 
+    const availability =
+      typeof req.query.availability ===
+      'string'
+        ? req.query.availability.trim()
+        : '';
+
+    const minPrice =
+      parseOptionalPrice(
+        req.query.minPrice
+      );
+
+    const maxPrice =
+      parseOptionalPrice(
+        req.query.maxPrice
+      );
+
     const sortBy =
       typeof req.query.sortBy ===
       'string'
@@ -315,6 +385,29 @@ const getProducts = async (
     }
 
     if (
+      availability &&
+      !ALLOWED_AVAILABILITY_FILTERS.includes(
+        availability
+      )
+    ) {
+      throw new AppError(
+        ErrorSelector.BAD_REQUEST,
+        'Invalid availability filter'
+      );
+    }
+
+    if (
+      minPrice !== undefined &&
+      maxPrice !== undefined &&
+      minPrice.gt(maxPrice)
+    ) {
+      throw new AppError(
+        ErrorSelector.BAD_REQUEST,
+        'Minimum price cannot be greater than maximum price'
+      );
+    }
+
+    if (
       !ALLOWED_SORT_FIELDS.includes(
         sortBy
       ) ||
@@ -334,8 +427,112 @@ const getProducts = async (
         limit,
         category,
         search,
+        minPrice,
+        maxPrice,
+        availability,
         sortBy,
         order,
+      });
+
+    return sendSuccess(res, {
+      data:
+        result.products,
+      meta:
+        result.meta,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getProductsForAdmin = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const page =
+      parsePositiveInteger(
+        req.query.page,
+        1
+      );
+
+    const limit =
+      parsePositiveInteger(
+        req.query.limit,
+        20,
+        {
+          min: 1,
+          max: 100,
+        }
+      );
+
+    const search =
+      typeof req.query.search ===
+      'string'
+        ? req.query.search.trim()
+        : '';
+
+    const category =
+      typeof req.query.category ===
+      'string'
+        ? req.query.category.trim()
+        : '';
+
+    const status =
+      typeof req.query.status ===
+      'string'
+        ? req.query.status.trim()
+        : '';
+
+    const stock =
+      typeof req.query.stock ===
+      'string'
+        ? req.query.stock.trim()
+        : '';
+
+    if (
+      search.length > 100 ||
+      category.length > 50
+    ) {
+      throw new AppError(
+        ErrorSelector.BAD_REQUEST,
+        'Invalid search parameters'
+      );
+    }
+
+    if (
+      status &&
+      !ALLOWED_ADMIN_STATUSES.includes(
+        status
+      )
+    ) {
+      throw new AppError(
+        ErrorSelector.BAD_REQUEST,
+        'Invalid product status filter'
+      );
+    }
+
+    if (
+      stock &&
+      !ALLOWED_ADMIN_STOCK_FILTERS.includes(
+        stock
+      )
+    ) {
+      throw new AppError(
+        ErrorSelector.BAD_REQUEST,
+        'Invalid stock filter'
+      );
+    }
+
+    const result =
+      await productsService.getProductsForAdmin({
+        page,
+        limit,
+        search,
+        category,
+        status,
+        stock,
       });
 
     return sendSuccess(res, {
@@ -362,6 +559,36 @@ const getProductById = async (
 
     const product =
       await productsService.getProductById(
+        id
+      );
+
+    if (!product) {
+      throw new AppError(
+        ErrorSelector.NOT_FOUND
+      );
+    }
+
+    return sendSuccess(res, {
+      data: product,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getProductByIdForAdmin = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const id =
+      parseProductId(
+        req.params.id
+      );
+
+    const product =
+      await productsService.getProductByIdForAdmin(
         id
       );
 
@@ -496,21 +723,18 @@ const createProduct = async (
         req.body.images
       );
 
-    if (req.file) {
-      const uploadResult =
-        await cloudinaryService.uploadImage(
-          req.file
-        );
-
-      images.push(
-        uploadResult.secure_url
+    const uploadedImages =
+      await uploadProductImages(
+        req.files
       );
-    }
 
     const product =
       await productsService.createProduct({
         ...payload,
-        images,
+        images: [
+          ...images,
+          ...uploadedImages,
+        ],
       });
 
     return sendSuccess(res, {
@@ -621,15 +845,17 @@ const updateProduct = async (
         );
     }
 
-    if (req.file) {
-      const uploadResult =
-        await cloudinaryService.uploadImage(
-          req.file
-        );
+    const uploadedImages =
+      await uploadProductImages(
+        req.files
+      );
 
+    if (
+      uploadedImages.length > 0
+    ) {
       images = [
         ...(images ?? []),
-        uploadResult.secure_url,
+        ...uploadedImages,
       ];
     }
 
@@ -695,13 +921,50 @@ const deleteProduct = async (
   }
 };
 
+const restoreProduct = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const id =
+      parseProductId(
+        req.params.id
+      );
+
+    const restoredProduct =
+      await productsService.restoreProduct(
+        id
+      );
+
+    if (!restoredProduct) {
+      throw new AppError(
+        ErrorSelector.NOT_FOUND
+      );
+    }
+
+    return sendSuccess(res, {
+      data:
+        restoredProduct,
+
+      message:
+        'Product restored successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const productsController = {
   getProducts,
+  getProductsForAdmin,
   getProductById,
+  getProductByIdForAdmin,
   getRestockAlert,
   subscribeRestockAlert,
   cancelRestockAlert,
   createProduct,
   updateProduct,
   deleteProduct,
+  restoreProduct,
 };

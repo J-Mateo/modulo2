@@ -5,14 +5,16 @@ import { restockAlertsService } from './restockAlerts.service.js';
 const buildPublicWhere = ({
   category = '',
   search = '',
+  minPrice,
+  maxPrice,
+  availability = '',
 } = {}) => {
   const where = {
     isActive: true,
   };
 
   if (category) {
-    where.category =
-      category;
+    where.category = category;
   }
 
   if (search) {
@@ -32,7 +34,72 @@ const buildPublicWhere = ({
     ];
   }
 
+  if (
+    minPrice !== undefined ||
+    maxPrice !== undefined
+  ) {
+    where.price = {};
+
+    if (minPrice !== undefined) {
+      where.price.gte =
+        minPrice;
+    }
+
+    if (maxPrice !== undefined) {
+      where.price.lte =
+        maxPrice;
+    }
+  }
+
+  if (
+    availability ===
+    'inStock'
+  ) {
+    where.stock = {
+      gt: 0,
+    };
+  }
+
+  if (
+    availability ===
+    'outOfStock'
+  ) {
+    where.stock = 0;
+  }
+
   return where;
+};
+
+const buildPublicOrderBy = ({
+  sortBy = 'createdAt',
+  order = 'desc',
+} = {}) => {
+  if (
+    sortBy ===
+    'availability'
+  ) {
+    return [
+      {
+        stock:
+          'desc',
+      },
+      {
+        id:
+          'asc',
+      },
+    ];
+  }
+
+  return [
+    {
+      [sortBy]:
+        order,
+    },
+    {
+      id:
+        'asc',
+    },
+  ];
 };
 
 const getProducts = async ({
@@ -40,6 +107,9 @@ const getProducts = async ({
   limit = 12,
   category = '',
   search = '',
+  minPrice,
+  maxPrice,
+  availability = '',
   sortBy = 'createdAt',
   order = 'desc',
 } = {}) => {
@@ -47,6 +117,15 @@ const getProducts = async ({
     buildPublicWhere({
       category,
       search,
+      minPrice,
+      maxPrice,
+      availability,
+    });
+
+  const orderBy =
+    buildPublicOrderBy({
+      sortBy,
+      order,
     });
 
   const skip =
@@ -60,19 +139,10 @@ const getProducts = async ({
     await prisma.$transaction([
       prisma.product.findMany({
         where,
-
-        orderBy: [
-          {
-            [sortBy]:
-              order,
-          },
-          {
-            id: 'asc',
-          },
-        ],
-
+        orderBy,
         skip,
-        take: limit,
+        take:
+          limit,
       }),
 
       prisma.product.count({
@@ -103,8 +173,10 @@ const getProductById =
   async (id) => {
     return prisma.product.findFirst({
       where: {
-        id: Number(id),
-        isActive: true,
+        id:
+          Number(id),
+        isActive:
+          true,
       },
     });
   };
@@ -113,39 +185,108 @@ const getProductByIdForAdmin =
   async (id) => {
     return prisma.product.findUnique({
       where: {
-        id: Number(id),
+        id:
+          Number(id),
       },
     });
   };
+
+const buildAdminWhere = ({
+  category = '',
+  search = '',
+  status = '',
+  stock = '',
+} = {}) => {
+  const where = {};
+
+  if (search) {
+    where.OR = [
+      {
+        name: {
+          contains:
+            search,
+          mode:
+            'insensitive',
+        },
+      },
+      {
+        description: {
+          contains:
+            search,
+          mode:
+            'insensitive',
+        },
+      },
+    ];
+  }
+
+  if (category) {
+    where.category =
+      category;
+  }
+
+  if (
+    status ===
+    'active'
+  ) {
+    where.isActive =
+      true;
+  }
+
+  if (
+    status ===
+    'inactive'
+  ) {
+    where.isActive =
+      false;
+  }
+
+  if (
+    stock ===
+    'inStock'
+  ) {
+    where.stock = {
+      gt: 0,
+    };
+  }
+
+  if (
+    stock ===
+    'lowStock'
+  ) {
+    where.stock = {
+      gt: 0,
+      lte: 5,
+    };
+  }
+
+  if (
+    stock ===
+    'outOfStock'
+  ) {
+    where.stock =
+      0;
+  }
+
+  return where;
+};
 
 const getProductsForAdmin =
   async ({
     page = 1,
     limit = 20,
     search = '',
+    category = '',
+    status = '',
+    stock = '',
   } = {}) => {
-    const where = {};
-
-    if (search) {
-      where.OR = [
-        {
-          name: {
-            contains:
-              search,
-            mode:
-              'insensitive',
-          },
-        },
-        {
-          description: {
-            contains:
-              search,
-            mode:
-              'insensitive',
-          },
-        },
-      ];
-    }
+    const where =
+      buildAdminWhere({
+        search,
+        category,
+        status,
+        stock,
+      });
 
     const skip =
       (page - 1) *
@@ -165,7 +306,8 @@ const getProductsForAdmin =
           },
 
           skip,
-          take: limit,
+          take:
+            limit,
         }),
 
         prisma.product.count({
@@ -244,9 +386,12 @@ const updateProduct =
         },
 
         select: {
-          id: true,
-          stock: true,
-          isActive: true,
+          id:
+            true,
+          stock:
+            true,
+          isActive:
+            true,
         },
       });
 
@@ -254,7 +399,8 @@ const updateProduct =
       return null;
     }
 
-    const updateData = {};
+    const updateData =
+      {};
 
     if (
       data.name !==
@@ -333,23 +479,13 @@ const updateProduct =
           updateData,
       });
 
-    /*
-     * Solo enviamos alertas cuando hay
-     * una reposición REAL:
-     *
-     * 0 unidades -> una o más unidades
-     *
-     * No enviamos:
-     *
-     * 5 -> 8
-     * 8 -> 10
-     * 0 -> 0
-     */
     const wasOutOfStock =
-      existingProduct.stock <= 0;
+      existingProduct.stock <=
+      0;
 
     const isNowAvailable =
-      updatedProduct.stock > 0;
+      updatedProduct.stock >
+      0;
 
     const stockWasUpdated =
       data.stock !==
@@ -370,21 +506,16 @@ const updateProduct =
             );
 
         if (
-          result.notified > 0 ||
-          result.failed > 0
+          result.notified >
+            0 ||
+          result.failed >
+            0
         ) {
           console.log(
             `Restock notifications for product ${updatedProduct.id}: ${result.notified} sent, ${result.failed} failed`
           );
         }
       } catch (error) {
-        /*
-         * El producto ya ha sido repuesto.
-         *
-         * Un fallo del proveedor de correo
-         * no debe revertir la actualización
-         * de stock.
-         */
         console.error(
           'Restock notification error:',
           error?.message ||
@@ -409,8 +540,10 @@ const deleteProduct =
         },
 
         select: {
-          id: true,
-          isActive: true,
+          id:
+            true,
+          isActive:
+            true,
         },
       });
 
@@ -455,7 +588,8 @@ const restoreProduct =
         },
 
         select: {
-          id: true,
+          id:
+            true,
         },
       });
 

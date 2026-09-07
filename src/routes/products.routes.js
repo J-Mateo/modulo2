@@ -18,6 +18,20 @@ router.get(
 );
 
 router.get(
+  '/admin',
+  authenticate,
+  requireRole('ADMIN'),
+  productsController.getProductsForAdmin
+);
+
+router.get(
+  '/admin/:id',
+  authenticate,
+  requireRole('ADMIN'),
+  productsController.getProductByIdForAdmin
+);
+
+router.get(
   '/:id/restock-alert',
   authenticate,
   productsController.getRestockAlert
@@ -35,6 +49,17 @@ router.delete(
   productsController.cancelRestockAlert
 );
 
+router.patch(
+  '/:id/restore',
+  authenticate,
+  requireRole('ADMIN'),
+  adminLogger(
+    'RESTORE_PRODUCT',
+    'product'
+  ),
+  productsController.restoreProduct
+);
+
 router.get(
   '/:id',
   noCache,
@@ -45,7 +70,7 @@ router.post(
   '/',
   authenticate,
   requireRole('ADMIN'),
-  upload.single('image'),
+  upload.array('images', 6),
   adminLogger(
     'CREATE_PRODUCT',
     'product'
@@ -57,7 +82,7 @@ router.put(
   '/:id',
   authenticate,
   requireRole('ADMIN'),
-  upload.single('image'),
+  upload.array('images', 6),
   adminLogger(
     'UPDATE_PRODUCT',
     'product'
