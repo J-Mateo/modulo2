@@ -109,6 +109,9 @@ model Order {
   total  Decimal     @db.Decimal(10, 2)
   status OrderStatus @default(PENDING)
 
+  stripeCheckoutSessionId String? @unique
+  stripePaymentIntentId   String? @unique
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
