@@ -8,8 +8,19 @@ import {
   authenticate,
 } from '../middlewares/authenticate.js';
 
+import {
+  requireRole,
+} from '../middlewares/requireRole.js';
+
 const router =
   express.Router();
+
+router.get(
+  '/admin',
+  authenticate,
+  requireRole('ADMIN'),
+  ordersController.getAdminOrders
+);
 
 router.get(
   '/',
