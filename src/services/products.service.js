@@ -2,9 +2,53 @@ import prisma from '../config/prismaClient.js';
 
 import { restockAlertsService } from './restockAlerts.service.js';
 
+const findAccentInsensitiveProductIds =
+  async ({
+    search,
+    onlyActive = false,
+  }) => {
+    const normalizedSearch =
+      search.trim();
+
+    if (!normalizedSearch) {
+      return null;
+    }
+
+    const pattern =
+      `%${normalizedSearch}%`;
+
+    const matches = onlyActive
+      ? await prisma.$queryRaw`
+          SELECT "id"
+          FROM "Product"
+          WHERE "isActive" = true
+            AND (
+              unaccent(COALESCE("name", ''))
+                ILIKE unaccent(${pattern})
+              OR
+              unaccent(COALESCE("description", ''))
+                ILIKE unaccent(${pattern})
+            )
+        `
+      : await prisma.$queryRaw`
+          SELECT "id"
+          FROM "Product"
+          WHERE
+            unaccent(COALESCE("name", ''))
+              ILIKE unaccent(${pattern})
+            OR
+            unaccent(COALESCE("description", ''))
+              ILIKE unaccent(${pattern})
+        `;
+
+    return matches.map(
+      (product) => product.id
+    );
+  };
+
 const buildPublicWhere = ({
   category = '',
-  search = '',
+  productIds = null,
   minPrice,
   maxPrice,
   availability = '',
@@ -17,21 +61,10 @@ const buildPublicWhere = ({
     where.category = category;
   }
 
-  if (search) {
-    where.OR = [
-      {
-        name: {
-          contains: search,
-          mode: 'insensitive',
-        },
-      },
-      {
-        description: {
-          contains: search,
-          mode: 'insensitive',
-        },
-      },
-    ];
+  if (productIds !== null) {
+    where.id = {
+      in: productIds,
+    };
   }
 
   if (
@@ -113,10 +146,18 @@ const getProducts = async ({
   sortBy = 'createdAt',
   order = 'desc',
 } = {}) => {
+  const productIds =
+    search
+      ? await findAccentInsensitiveProductIds({
+          search,
+          onlyActive: true,
+        })
+      : null;
+
   const where =
     buildPublicWhere({
       category,
-      search,
+      productIds,
       minPrice,
       maxPrice,
       availability,
@@ -192,32 +233,17 @@ const getProductByIdForAdmin =
   };
 
 const buildAdminWhere = ({
+  productIds = null,
   category = '',
-  search = '',
   status = '',
   stock = '',
 } = {}) => {
   const where = {};
 
-  if (search) {
-    where.OR = [
-      {
-        name: {
-          contains:
-            search,
-          mode:
-            'insensitive',
-        },
-      },
-      {
-        description: {
-          contains:
-            search,
-          mode:
-            'insensitive',
-        },
-      },
-    ];
+  if (productIds !== null) {
+    where.id = {
+      in: productIds,
+    };
   }
 
   if (category) {
@@ -280,9 +306,16 @@ const getProductsForAdmin =
     status = '',
     stock = '',
   } = {}) => {
+    const productIds =
+      search
+        ? await findAccentInsensitiveProductIds({
+            search,
+          })
+        : null;
+
     const where =
       buildAdminWhere({
-        search,
+        productIds,
         category,
         status,
         stock,
