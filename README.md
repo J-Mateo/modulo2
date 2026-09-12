@@ -1,197 +1,274 @@
-# Rilmar Tech — Backend API
+**# Rilmar Tech — Backend API**
 
-Backend de **Rilmar Tech**, una aplicación full-stack de comercio electrónico orientada a productos tecnológicos.
+Backend de **\*\*Rilmar Tech\*\***, una aplicación full-stack de comercio electrónico orientada a productos tecnológicos.
 
 La API gestiona autenticación, usuarios, catálogo, carrito, wishlist, reseñas, checkout con Stripe, pedidos, administración, emails transaccionales y persistencia híbrida mediante PostgreSQL y MongoDB.
 
-## Demo
+**## Demo**
 
-### Frontend
+**### Frontend**
 
-https://rilmar-tech-frontend.vercel.app
+https\://aesthetic-halva-6e8e80.netlify.app
 
-### Backend API
+**### Backend API**
 
-https://backend-modulo2-api.onrender.com
+https\://backend-modulo2-api.onrender.com
 
-### Documentación Swagger
+**### Documentación Swagger**
 
-https://backend-modulo2-api.onrender.com/api-docs
+https\://backend-modulo2-api.onrender.com/api-docs
 
-> El backend está desplegado en Render. Al utilizar una instancia gratuita, el primer acceso después de un periodo de inactividad puede tardar unos segundos mientras el servicio se reactiva.
+\> El backend está desplegado en Render. Al utilizar una instancia gratuita, el primer acceso después de un periodo de inactividad puede tardar unos segundos mientras el servicio se reactiva.
 
----
+**---**
 
-## Tecnologías
+**## Tecnologías**
 
-### Backend
+**### Backend**
 
-- Node.js
-- Express 5
-- JavaScript ES Modules
-- Prisma ORM
-- PostgreSQL
-- MongoDB Atlas
-- Mongoose
+\- Node.js
 
-### Autenticación y seguridad
+\- Express 5
 
-- JSON Web Tokens
-- Cookies HTTP-Only
-- bcrypt
-- Helmet
-- CORS con credenciales
-- express-rate-limit
-- Invalidación de sesiones mediante `authVersion`
-- Tokens de recuperación de contraseña almacenados mediante hash SHA-256
-- Row Level Security para datos expuestos mediante PostgreSQL/Supabase
+\- JavaScript ES Modules
 
-### Servicios externos
+\- Prisma ORM
 
-- Stripe — checkout y pagos
-- Cloudinary — almacenamiento de imágenes
-- Resend — emails transaccionales
+\- PostgreSQL
 
-### Testing y documentación
+\- MongoDB Atlas
 
-- Jest
-- Supertest
-- Swagger / OpenAPI
+\- Mongoose
 
----
+**### Autenticación y seguridad**
 
-# Arquitectura
+\- JSON Web Tokens
+
+\- Cookies HTTP-Only
+
+\- bcrypt
+
+\- Helmet
+
+\- CORS con credenciales
+
+\- express-rate-limit
+
+\- Invalidación de sesiones mediante \`authVersion\`
+
+\- Tokens de recuperación de contraseña almacenados mediante hash SHA-256
+
+\- Row Level Security para datos expuestos mediante PostgreSQL/Supabase
+
+**### Servicios externos**
+
+\- Stripe — checkout y pagos
+
+\- Cloudinary — almacenamiento de imágenes
+
+\- Resend — emails transaccionales
+
+**### Testing y documentación**
+
+\- Jest
+
+\- Supertest
+
+\- Swagger / OpenAPI
+
+**---**
+
+**# Arquitectura**
 
 El backend sigue una arquitectura modular basada principalmente en:
 
-```text
+\`\`\`text
+
 src/
+
 ├── controllers/
+
 ├── middleware/
+
 ├── routes/
+
 ├── services/
+
 ├── utils/
+
 └── server.js
 
 prisma/
+
 ├── migrations/
+
 └── schema.prisma
 
 tests/
-```
+
+\`\`\`
 
 La aplicación separa responsabilidades entre:
 
-```text
+\`\`\`text
+
 HTTP Request
+
      │
+
      ▼
+
    Route
+
      │
+
      ▼
+
 Middleware
+
      │
+
      ▼
+
 Controller
+
      │
+
      ▼
+
  Service
+
      │
+
      ▼
+
 Database / External service
-```
+
+\`\`\`
 
 Los controladores gestionan la capa HTTP mientras que la lógica de negocio se concentra en los servicios.
 
----
+**---**
 
-# Persistencia híbrida
+**# Persistencia híbrida**
 
 Rilmar Tech utiliza dos sistemas de persistencia en función del tipo de información.
 
-## PostgreSQL + Prisma
+**## PostgreSQL + Prisma**
 
 Se utiliza para los datos relacionales y transaccionales:
 
-- Usuarios
-- Productos
-- Carritos
-- Items del carrito
-- Pedidos
-- Items de pedidos
-- Stock
-- Estados comerciales
-- Alertas de reposición
+\- Usuarios
 
-## MongoDB Atlas + Mongoose
+\- Productos
+
+\- Carritos
+
+\- Items del carrito
+
+\- Pedidos
+
+\- Items de pedidos
+
+\- Stock
+
+\- Estados comerciales
+
+\- Alertas de reposición
+
+**## MongoDB Atlas + Mongoose**
 
 Se utiliza para dominios documentales:
 
-- Wishlist
-- Reviews
+\- Wishlist
+
+\- Reviews
 
 Esta separación permite mantener en PostgreSQL la integridad necesaria para operaciones comerciales y utilizar MongoDB para información con una estructura más documental.
 
----
+**---**
 
-# Autenticación
+**# Autenticación**
 
-La API utiliza autenticación mediante JWT almacenado en una cookie **HTTP-Only**.
+La API utiliza autenticación mediante JWT almacenado en una cookie **\*\*HTTP-Only\*\***.
 
-El token no se devuelve al frontend dentro del JSON ni se almacena en `localStorage`.
+El token no se devuelve al frontend dentro del JSON ni se almacena en \`localStorage\`.
 
 La duración del JWT se configura mediante:
 
-```env
-JWT_EXPIRES_IN=7d
-```
+\`\`\`env
+
+JWT\_EXPIRES\_IN=7d
+
+\`\`\`
 
 Flujo principal:
 
-```text
+\`\`\`text
+
 Registro / Login
+
        │
+
        ▼
+
 Credenciales validadas
+
        │
+
        ▼
+
 JWT firmado
+
        │
+
        ▼
+
 Cookie HTTP-Only
+
        │
+
        ▼
+
 Middleware de autenticación
-```
+
+\`\`\`
 
 La aplicación soporta dos roles:
 
-```text
+\`\`\`text
+
 USER
+
 ADMIN
-```
+
+\`\`\`
 
 Las operaciones administrativas se protegen también en backend, por lo que la seguridad no depende únicamente de ocultar las rutas en el frontend.
 
----
+**---**
 
-# Política de contraseñas
+**# Política de contraseñas**
 
 Las contraseñas deben cumplir una política mínima de seguridad tanto durante el registro como durante los flujos en los que se establece una nueva contraseña.
 
 Requisitos:
 
-- Mínimo 8 caracteres
-- Al menos una letra minúscula
-- Al menos una letra mayúscula
-- Al menos un número
-- Al menos un carácter especial
+\- Mínimo 8 caracteres
 
-Las contraseñas se almacenan mediante **bcrypt** y nunca se persisten en texto plano.
+\- Al menos una letra minúscula
 
----
+\- Al menos una letra mayúscula
 
-# Recuperación de contraseña
+\- Al menos un número
+
+\- Al menos un carácter especial
+
+Las contraseñas se almacenan mediante **\*\*bcrypt\*\*** y nunca se persisten en texto plano.
+
+**---**
+
+**# Recuperación de contraseña**
 
 El flujo de recuperación está diseñado para evitar enumeración de usuarios.
 
@@ -199,127 +276,167 @@ Ante una solicitud de recuperación, la API devuelve la misma respuesta exista o
 
 Si el usuario existe:
 
-1. Se genera un token criptográficamente aleatorio.
-2. El token original se incluye únicamente en el enlace enviado por email.
-3. En PostgreSQL se almacena únicamente su hash SHA-256.
-4. El token expira después de 15 minutos.
-5. Una nueva solicitud invalida el token anterior.
+1\. Se genera un token criptográficamente aleatorio.
+
+2\. El token original se incluye únicamente en el enlace enviado por email.
+
+3\. En PostgreSQL se almacena únicamente su hash SHA-256.
+
+4\. El token expira después de 15 minutos.
+
+5\. Una nueva solicitud invalida el token anterior.
 
 El token es de un solo uso.
 
 Cuando la contraseña se restablece correctamente también se incrementa:
 
-```text
+\`\`\`text
+
 authVersion
-```
+
+\`\`\`
 
 Los JWT generados con una versión anterior dejan de ser aceptados, invalidando así sesiones previas.
 
 El restablecimiento de contraseña no inicia automáticamente una nueva sesión.
 
----
+**---**
 
-# Rate limiting
+**# Rate limiting**
 
 Los endpoints sensibles de autenticación utilizan límites específicos.
 
-| Operación | Límite |
-|---|---:|
-| Login | 10 intentos / 15 min |
-| Registro | 10 intentos / hora |
-| Forgot password | 5 solicitudes / 15 min |
-| Reset password | 10 intentos / 15 min |
+\| Operación | Límite |
+
+\|---|---:|
+
+\| Login | 10 intentos / 15 min |
+
+\| Registro | 10 intentos / hora |
+
+\| Forgot password | 5 solicitudes / 15 min |
+
+\| Reset password | 10 intentos / 15 min |
 
 Durante el entorno de testing estos límites se omiten para evitar interferencias entre pruebas automatizadas.
 
----
+**---**
 
-# Productos
+**# Productos**
 
 La API ofrece catálogo público y administración de productos.
 
-## Catálogo público
+**## Catálogo público**
 
 Permite:
 
-- Consultar productos activos
-- Buscar por texto
-- Filtrar por categoría
-- Filtrar por precio
-- Filtrar por disponibilidad
-- Ordenar resultados
-- Paginar resultados
-- Obtener el detalle de un producto
+\- Consultar productos activos
 
-La búsqueda de productos soporta texto **insensible a acentos**, utilizando la extensión `unaccent` de PostgreSQL.
+\- Buscar por texto
+
+\- Filtrar por categoría
+
+\- Filtrar por precio
+
+\- Filtrar por disponibilidad
+
+\- Ordenar resultados
+
+\- Paginar resultados
+
+\- Obtener el detalle de un producto
+
+La búsqueda de productos soporta texto **\*\*insensible a acentos\*\***, utilizando la extensión \`unaccent\` de PostgreSQL.
 
 Ejemplo:
 
-```text
+\`\`\`text
+
 lampara
-```
+
+\`\`\`
 
 puede encontrar:
 
-```text
+\`\`\`text
+
 Lámpara Inteligente
-```
+
+\`\`\`
 
 sin requerir que el usuario escriba exactamente los mismos acentos.
 
----
+**---**
 
-# Administración de productos
+**# Administración de productos**
 
-Los usuarios con rol `ADMIN` pueden:
+Los usuarios con rol \`ADMIN\` pueden:
 
-- Crear productos
-- Editar productos
-- Desactivar productos
-- Restaurar productos
-- Gestionar stock
-- Gestionar varias imágenes
-- Buscar productos
-- Filtrar por categoría
-- Filtrar por estado
-- Filtrar por disponibilidad
+\- Crear productos
+
+\- Editar productos
+
+\- Desactivar productos
+
+\- Restaurar productos
+
+\- Gestionar stock
+
+\- Gestionar varias imágenes
+
+\- Buscar productos
+
+\- Filtrar por categoría
+
+\- Filtrar por estado
+
+\- Filtrar por disponibilidad
 
 La eliminación de productos es lógica:
 
-```text
+\`\`\`text
+
 isActive = false
-```
+
+\`\`\`
 
 De esta forma se evita destruir información que pueda estar relacionada con pedidos históricos.
 
----
+**---**
 
-# Imágenes
+**# Imágenes**
 
 Los productos admiten múltiples imágenes.
 
-```text
+\`\`\`text
+
 images: String[]
-```
+
+\`\`\`
 
 Los uploads se gestionan mediante Multer y Cloudinary.
 
 Esto evita almacenar archivos arbitrarios directamente en el servidor de la aplicación.
 
----
+**---**
 
-# Carrito
+**# Carrito**
 
 Los usuarios autenticados disponen de un carrito persistente almacenado en PostgreSQL.
 
 La base de datos garantiza:
 
-- Un único carrito `ACTIVE` por usuario
-- Un único item por producto dentro de cada carrito
-- Persistencia entre sesiones
-- Actualización de cantidades
-- Eliminación de productos
-- Integridad del carrito
+\- Un único carrito \`ACTIVE\` por usuario
+
+\- Un único item por producto dentro de cada carrito
+
+\- Persistencia entre sesiones
+
+\- Actualización de cantidades
+
+\- Eliminación de productos
+
+\- Integridad del carrito
 
 El frontend incorpora además un carrito de invitado que posteriormente puede sincronizarse con el carrito persistente tras iniciar sesión o registrarse.
 
@@ -327,106 +444,159 @@ La sincronización definitiva se realiza contra esta API.
 
 Los datos comerciales relevantes, como precio, disponibilidad y stock, se validan siempre en backend y no se confían al contenido almacenado por el cliente.
 
----
+**---**
 
-# Checkout y Stripe
+**# Checkout y Stripe**
 
-El proyecto integra un flujo de pago mediante **Stripe Checkout**.
+El proyecto integra un flujo de pago mediante **\*\*Stripe Checkout\*\***.
 
 La sesión de Stripe se crea exclusivamente desde el backend.
 
 El servidor controla:
 
-- Usuario autenticado
-- Productos
-- Cantidades
-- Precios
-- Stock
-- Total
-- Moneda
-- Pedido asociado
-- Metadata de Stripe
-- URLs de retorno
+\- Usuario autenticado
+
+\- Productos
+
+\- Cantidades
+
+\- Precios
+
+\- Stock
+
+\- Total
+
+\- Moneda
+
+\- Pedido asociado
+
+\- Metadata de Stripe
+
+\- URLs de retorno
 
 El frontend no construye el pago ni determina los importes. Solicita el checkout al backend y recibe la URL necesaria para redirigir al usuario a Stripe.
 
 Flujo simplificado:
 
-```text
+\`\`\`text
+
 Carrito
+
    │
+
    ▼
+
 POST checkout
+
    │
+
    ▼
+
 Validación de productos y stock
+
    │
+
    ▼
+
 Transacción PostgreSQL
+
    │
+
    ▼
+
 Reserva de stock
+
    │
+
    ▼
+
 Pedido PENDING
+
    │
+
    ▼
+
 Stripe Checkout Session
+
    │
+
    ▼
+
 Página segura de Stripe
+
    │
+
    ▼
+
 Pago
+
    │
+
    ▼
+
 Webhook firmado de Stripe
+
    │
+
    ▼
+
 Pedido PAID
-```
+
+\`\`\`
 
 Ejemplo de respuesta:
 
-```json
+\`\`\`json
+
 {
+
   "success": true,
+
   "data": {
+
     "orderId": 184,
-    "checkoutUrl": "https://checkout.stripe.com/..."
+
+    "checkoutUrl": "https\://checkout.stripe.com/..."
+
   }
+
 }
-```
+
+\`\`\`
 
 El frontend no procesa directamente los datos sensibles de la tarjeta.
 
 La información de pago es gestionada por Stripe.
 
-## Confirmación del pago
+**## Confirmación del pago**
 
-La página de éxito del frontend **no marca un pedido como pagado**.
+La página de éxito del frontend **\*\*no marca un pedido como pagado\*\***.
 
 Stripe notifica el resultado al backend mediante un webhook firmado, que actúa como fuente de verdad para el estado del pago.
 
 Una sesión completada puede producir:
 
-```text
-PENDING → PAID
-```
+\`\`\`text
 
-El stock ya fue reservado durante la creación del pedido, por lo que **no vuelve a descontarse al confirmar el pago**.
+PENDING → PAID
+
+\`\`\`
+
+El stock ya fue reservado durante la creación del pedido, por lo que **\*\*no vuelve a descontarse al confirmar el pago\*\***.
 
 Una sesión expirada puede producir:
 
-```text
+\`\`\`text
+
 PENDING → CANCELLED
-```
+
+\`\`\`
 
 restaurando el stock reservado cuando corresponde.
 
 El procesamiento utiliza transiciones de estado para evitar aplicar varias veces los efectos de un mismo evento.
 
-## Idempotencia y compensación
+**## Idempotencia y compensación**
 
 La creación de sesiones de Stripe utiliza una clave de idempotencia asociada al pedido.
 
@@ -436,30 +606,39 @@ Si una sesión de Stripe ya ha sido creada pero se produce un fallo posterior al
 
 Si no puede confirmarse de forma segura la expiración remota, se conserva el estado local de forma conservadora en lugar de liberar stock que pudiera estar asociado a una sesión de pago todavía válida.
 
----
+**---**
 
-# Integridad de stock
+**# Integridad de stock**
 
 La lógica comercial protege el stock frente a compras concurrentes.
 
 Durante el checkout:
 
-1. Se obtiene el carrito activo.
-2. Se valida que contenga productos.
-3. Se comprueba la disponibilidad.
-4. Se realizan actualizaciones condicionales de stock.
-5. Se calcula el total.
-6. Se crea el pedido.
-7. Se almacenan snapshots comerciales.
-8. Se completa el flujo del carrito.
+1\. Se obtiene el carrito activo.
+
+2\. Se valida que contenga productos.
+
+3\. Se comprueba la disponibilidad.
+
+4\. Se realizan actualizaciones condicionales de stock.
+
+5\. Se calcula el total.
+
+6\. Se crea el pedido.
+
+7\. Se almacenan snapshots comerciales.
+
+8\. Se completa el flujo del carrito.
 
 Las operaciones críticas se ejecutan dentro de transacciones Prisma.
 
 Si una operación falla:
 
-```text
+\`\`\`text
+
 ROLLBACK
-```
+
+\`\`\`
 
 Esto evita estados parciales dentro de la transacción.
 
@@ -467,15 +646,17 @@ La actualización condicional de inventario evita además que dos checkouts conc
 
 La integración con Stripe incorpora mecanismos adicionales de compensación para reducir el riesgo de inconsistencias entre el proveedor de pagos y el estado local.
 
----
+**---**
 
-# Importes monetarios
+**# Importes monetarios**
 
 Los importes monetarios utilizan:
 
-```text
+\`\`\`text
+
 Prisma.Decimal
-```
+
+\`\`\`
 
 en lugar de tipos de coma flotante.
 
@@ -483,37 +664,47 @@ Esto evita errores de precisión en cálculos comerciales.
 
 Los importes se conservan con dos decimales.
 
----
+**---**
 
-# Pedidos
+**# Pedidos**
 
 Los pedidos se almacenan en PostgreSQL.
 
 Estados comerciales soportados:
 
-```text
+\`\`\`text
+
 PENDING
+
 PAID
+
 CANCELLED
+
 REFUNDED
-```
+
+\`\`\`
 
 Cada pedido conserva información histórica de la compra.
 
 Cada item almacena, entre otros datos:
 
-- Producto
-- Nombre en el momento de la compra
-- Imagen
-- Cantidad
-- Precio aplicado
-- Referencia al producto original cuando corresponde
+\- Producto
+
+\- Nombre en el momento de la compra
+
+\- Imagen
+
+\- Cantidad
+
+\- Precio aplicado
+
+\- Referencia al producto original cuando corresponde
 
 De esta manera, modificar posteriormente un producto no altera la información histórica de compras anteriores.
 
----
+**---**
 
-# Historial de pedidos
+**# Historial de pedidos**
 
 Los usuarios autenticados pueden consultar sus pedidos desde su perfil.
 
@@ -521,69 +712,87 @@ El backend dispone de endpoints autenticados destinados a recuperar el historial
 
 Esto permite mostrar:
 
-- Número de pedido
-- Fecha
-- Estado
-- Total
-- Productos
-- Cantidades
-- Precio histórico
+\- Número de pedido
+
+\- Fecha
+
+\- Estado
+
+\- Total
+
+\- Productos
+
+\- Cantidades
+
+\- Precio histórico
 
 La consulta del detalle de un pedido está limitada al usuario propietario del mismo.
 
----
+**---**
 
-# Administración de pedidos
+**# Administración de pedidos**
 
 Los administradores disponen de endpoints específicos para consultar los pedidos de la tienda.
 
 La API permite:
 
-- Listar pedidos
-- Consultar pedidos
-- Buscar por datos relevantes
-- Filtrar por estado
-- Visualizar cliente
-- Visualizar fecha
-- Visualizar total
+\- Listar pedidos
 
-La autorización se realiza mediante el rol `ADMIN`.
+\- Consultar pedidos
 
----
+\- Buscar por datos relevantes
 
-# Administración de usuarios
+\- Filtrar por estado
+
+\- Visualizar cliente
+
+\- Visualizar fecha
+
+\- Visualizar total
+
+La autorización se realiza mediante el rol \`ADMIN\`.
+
+**---**
+
+**# Administración de usuarios**
 
 El backend expone endpoints administrativos para consultar usuarios registrados.
 
 La administración puede:
 
-- Listar usuarios
-- Buscar por nombre o email
-- Filtrar por rol
-- Consultar información asociada
-- Diferenciar usuarios y administradores
+\- Listar usuarios
+
+\- Buscar por nombre o email
+
+\- Filtrar por rol
+
+\- Consultar información asociada
+
+\- Diferenciar usuarios y administradores
 
 Los datos sensibles, como hashes de contraseñas, no se exponen en las respuestas administrativas.
 
----
+**---**
 
-# Wishlist
+**# Wishlist**
 
 La lista de deseos se almacena mediante MongoDB Atlas y está vinculada al usuario autenticado.
 
 Permite consultar la wishlist mediante:
 
-```http
+\`\`\`http
+
 GET /api/wishlist
-```
+
+\`\`\`
 
 y realizar operaciones de toggle mediante el identificador de producto.
 
 La wishlist persiste entre sesiones y no depende del almacenamiento local del navegador.
 
----
+**---**
 
-# Reviews
+**# Reviews**
 
 Las reseñas se almacenan mediante MongoDB Atlas y Mongoose.
 
@@ -591,565 +800,756 @@ El sistema permite consultar las reseñas asociadas a cada producto y publicar n
 
 Esta información documental se mantiene separada de las operaciones transaccionales de PostgreSQL.
 
----
+**---**
 
-# Alertas de reposición
+**# Alertas de reposición**
 
 Los usuarios autenticados pueden solicitar recibir una notificación cuando un producto agotado vuelva a tener stock.
 
 Estados:
 
-```text
+\`\`\`text
+
 PENDING
+
 NOTIFIED
+
 CANCELLED
-```
+
+\`\`\`
 
 Cuando el stock cambia desde:
 
-```text
+\`\`\`text
+
 0 → valor positivo
-```
+
+\`\`\`
 
 se procesan las alertas pendientes.
 
 Si Resend confirma el envío:
 
-```text
+\`\`\`text
+
 PENDING → NOTIFIED
-```
+
+\`\`\`
 
 Si el proveedor de email falla:
 
-- El cambio de stock no se revierte
-- La alerta continúa pendiente
-- El resto del procesamiento puede continuar
+\- El cambio de stock no se revierte
+
+\- La alerta continúa pendiente
+
+\- El resto del procesamiento puede continuar
 
 Un aumento posterior sobre un producto que ya tenía stock no genera una notificación duplicada.
 
-## Row Level Security
+**## Row Level Security**
 
-La tabla PostgreSQL `RestockAlert` tiene **Row Level Security (RLS)** habilitado.
+La tabla PostgreSQL \`RestockAlert\` tiene **\*\*Row Level Security (RLS)\*\*** habilitado.
 
 Esto impide que la exposición de la tabla mediante una capa de acceso directo conceda por defecto acceso público a sus filas.
 
 La aplicación realiza las operaciones autorizadas desde el backend mediante su conexión de base de datos.
 
----
+**---**
 
-# Emails transaccionales
+**# Emails transaccionales**
 
 La API integra Resend para emails relacionados con:
 
-- Registro y bienvenida
-- Recuperación de contraseña
-- Alertas de reposición
+\- Registro y bienvenida
+
+\- Recuperación de contraseña
+
+\- Alertas de reposición
 
 Los fallos de servicios externos se gestionan para no romper operaciones de negocio que ya hayan sido completadas correctamente cuando corresponde.
 
 El contenido dinámico insertado en HTML se escapa antes de construir los emails.
 
----
+**---**
 
-# Manejo de errores
+**# Manejo de errores**
 
 La aplicación utiliza un sistema centralizado de errores basado en componentes como:
 
-```text
+\`\`\`text
+
 AppError
+
 ErrorSelector
+
 errorHandler
-```
+
+\`\`\`
 
 Las respuestas mantienen una estructura consistente.
 
 Ejemplo:
 
-```json
+\`\`\`json
+
 {
+
   "success": false,
+
   "error": {
+
     "code": "UNAUTHORIZED",
+
     "message": "Unauthorized"
+
   }
+
 }
-```
+
+\`\`\`
 
 Los errores inesperados no deben exponer información interna sensible en producción.
 
----
+**---**
 
-# Endpoints principales
+**# Endpoints principales**
 
 La mayor parte de la API se monta bajo:
 
-```text
+\`\`\`text
+
 /api
-```
+
+\`\`\`
 
 y dispone además de:
 
-```http
+\`\`\`http
+
 GET /health
-```
+
+\`\`\`
 
 para comprobar el estado del servicio.
 
 Los principales dominios son:
 
-```text
+\`\`\`text
+
 /api/auth
+
 /api/products
-/api/products/:productId/reviews
+
+/api/products/\:productId/reviews
+
 /api/users
+
 /api/wishlist
+
 /api/cart
+
 /api/orders
+
 /api/payments
-```
+
+\`\`\`
 
 Entre las operaciones disponibles se encuentran:
 
-- Registro
-- Login
-- Logout
-- Recuperación de contraseña
-- Catálogo
-- Administración de productos
-- Reviews
-- Wishlist
-- Carrito
-- Checkout
-- Historial de pedidos
-- Administración de pedidos
-- Administración de usuarios
-- Consulta autenticada del estado de checkout
-- Webhook de Stripe
+\- Registro
+
+\- Login
+
+\- Logout
+
+\- Recuperación de contraseña
+
+\- Catálogo
+
+\- Administración de productos
+
+\- Reviews
+
+\- Wishlist
+
+\- Carrito
+
+\- Checkout
+
+\- Historial de pedidos
+
+\- Administración de pedidos
+
+\- Administración de usuarios
+
+\- Consulta autenticada del estado de checkout
+
+\- Webhook de Stripe
 
 El webhook de Stripe recibe el cuerpo original de la petición para permitir la verificación de su firma antes del procesamiento JSON convencional de la aplicación.
 
----
+**---**
 
-# Seguridad
+**# Seguridad**
 
 Entre las principales decisiones de seguridad del proyecto se encuentran:
 
-### JWT fuera de JavaScript
+**### JWT fuera de JavaScript**
 
-El JWT se almacena en una cookie HTTP-Only y no en `localStorage`.
+El JWT se almacena en una cookie HTTP-Only y no en \`localStorage\`.
 
-### Password hashing
+**### Password hashing**
 
 Las contraseñas se almacenan utilizando bcrypt.
 
-### Política de contraseñas
+**### Política de contraseñas**
 
 Las nuevas contraseñas deben cumplir los requisitos mínimos definidos por la aplicación.
 
-### Recuperación de contraseña segura
+**### Recuperación de contraseña segura**
 
 Los tokens reales de recuperación nunca se almacenan directamente en la base de datos.
 
-### Anti-enumeración
+**### Anti-enumeración**
 
 El endpoint de recuperación no revela si un correo pertenece a una cuenta registrada.
 
-### Tokens temporales
+**### Tokens temporales**
 
 Los tokens de recuperación expiran y solo pueden utilizarse una vez.
 
-### Invalidación de sesiones
+**### Invalidación de sesiones**
 
-`authVersion` permite invalidar sesiones previas después de un cambio de contraseña.
+\`authVersion\` permite invalidar sesiones previas después de un cambio de contraseña.
 
-### Rate limiting
+**### Rate limiting**
 
 Los endpoints sensibles cuentan con protección frente a intentos repetidos.
 
-### Autorización server-side
+**### Autorización server-side**
 
 El backend comprueba los roles independientemente de la interfaz del frontend.
 
-### Propiedad de recursos
+**### Propiedad de recursos**
 
 Las consultas de recursos privados, como el detalle de pedidos, comprueban también el usuario propietario.
 
-### Integridad de stock
+**### Integridad de stock**
 
 Se utilizan transacciones y operaciones condicionales para reducir el riesgo de overselling.
 
-### Importes monetarios
+**### Importes monetarios**
 
 Los precios se procesan mediante tipos decimales y los importes del checkout se determinan en backend.
 
-### Servicios de pago
+**### Servicios de pago**
 
 Los datos sensibles de las tarjetas se gestionan directamente mediante Stripe.
 
 El cliente no es la fuente de verdad para precios, stock ni estado de pago.
 
-### Webhooks
+**### Webhooks**
 
 La confirmación del pago se procesa mediante webhooks cuya firma se verifica utilizando el secreto configurado para el endpoint.
 
-### Row Level Security
+**### Row Level Security**
 
-`RestockAlert` tiene RLS habilitado en PostgreSQL.
+\`RestockAlert\` tiene RLS habilitado en PostgreSQL.
 
-### Uploads
+**### Uploads**
 
 Las imágenes se almacenan mediante Cloudinary.
 
-### Secretos
+**### Secretos**
 
 Las credenciales y claves privadas se configuran mediante variables de entorno y no deben incluirse en el repositorio.
 
----
+**---**
 
-# Testing
+**# Testing**
 
 El proyecto utiliza:
 
-```text
+\`\`\`text
+
 Jest
+
 Supertest
-```
+
+\`\`\`
 
 Ejecutar la suite:
 
-```bash
-npm test
-```
+\`\`\`bash
 
-Los tests se ejecutan secuencialmente mediante `--runInBand`.
+npm test
+
+\`\`\`
+
+Los tests se ejecutan secuencialmente mediante \`--runInBand\`.
 
 La cobertura funcional incluye, entre otras áreas:
 
-- Registro
-- Login
-- Logout
-- Cookies HTTP-Only
-- Roles y autorización
-- Política de contraseñas
-- Recuperación de contraseña
-- Invalidación de sesiones
-- Productos
-- Catálogo
-- Carrito
-- Wishlist
-- Reviews
-- Checkout
-- Stripe
-- Webhooks
-- Stock
-- Concurrencia
-- Pedidos
-- Emails
-- Alertas de reposición
-- Manejo de errores
+\- Registro
+
+\- Login
+
+\- Logout
+
+\- Cookies HTTP-Only
+
+\- Roles y autorización
+
+\- Política de contraseñas
+
+\- Recuperación de contraseña
+
+\- Invalidación de sesiones
+
+\- Productos
+
+\- Catálogo
+
+\- Carrito
+
+\- Wishlist
+
+\- Reviews
+
+\- Checkout
+
+\- Stripe
+
+\- Webhooks
+
+\- Stock
+
+\- Concurrencia
+
+\- Pedidos
+
+\- Emails
+
+\- Alertas de reposición
+
+\- Manejo de errores
 
 La suite actual del proyecto finaliza correctamente con:
 
-```text
+\`\`\`text
+
 Test Suites: 16 passed, 16 total
+
 Tests:       98 passed, 98 total
-```
 
----
+\`\`\`
 
-# Evidencias del proyecto
+**---**
+
+**# Evidencias del proyecto**
 
 Las siguientes capturas muestran los principales componentes técnicos y flujos del backend.
 
-## API y persistencia
+**## API y persistencia**
 
 Persistencia documental mediante MongoDB Atlas y documentación de la API mediante Swagger / OpenAPI.
 
-![API y persistencia](docs/api-data-overview.png)
+![API y persistencia]\(docs/api-data-overview\.png)
 
-## Autenticación
+**## Autenticación**
 
 Login realizado contra la API con respuesta satisfactoria y sesión gestionada mediante cookie HTTP-Only.
 
-![Autenticación API](docs/auth-login.png)
+![Autenticación API]\(docs/auth-login.png)
 
-## Flujo de pago con Stripe
+**## Flujo de pago con Stripe**
 
-Flujo completo de checkout: creación de la sesión desde la API, redirección a Stripe Checkout, confirmación del pedido y recepción del evento `checkout.session.completed` mediante el webhook del backend.
+Flujo completo de checkout: creación de la sesión desde la API, redirección a Stripe Checkout, confirmación del pedido y recepción del evento \`checkout.session.completed\` mediante el webhook del backend.
 
-![Flujo de pago con Stripe](docs/payment-flow.png)
+![Flujo de pago con Stripe]\(docs/payment-flow\.png)
 
-La captura corresponde al entorno desplegado utilizando **Stripe en modo de prueba**. No representa un cobro real en modo live.
+La captura corresponde al entorno desplegado utilizando **\*\*Stripe en modo de prueba\*\***. No representa un cobro real en modo live.
 
-## Despliegue en producción
+**## Despliegue en producción**
 
 Backend desplegado en Render y ejecutándose mediante la configuración de producción.
 
-![Backend desplegado en Render](docs/render-production-deploy.png)
+![Backend desplegado en Render]\(docs/render-production-deploy.png)
 
----
+**---**
 
-# Ejecución local
+**# Ejecución local**
 
-## 1. Clonar el repositorio
+**## 1. Clonar el repositorio**
 
-```bash
-git clone https://github.com/J-Mateo/modulo2.git
+\`\`\`bash
+
+git clone https\://github.com/J-Mateo/modulo2.git
+
 cd modulo2
-```
 
-## 2. Instalar dependencias
+\`\`\`
 
-```bash
+**## 2. Instalar dependencias**
+
+\`\`\`bash
+
 npm install
-```
 
-## 3. Configurar variables de entorno
+\`\`\`
+
+**## 3. Configurar variables de entorno**
 
 El repositorio incluye:
 
-```text
-.env.example
-```
+\`\`\`text
 
-Crea un archivo `.env` a partir de ese ejemplo y configura las credenciales y URLs necesarias para los servicios utilizados por la aplicación.
+.env.example
+
+\`\`\`
+
+Crea un archivo \`.env\` a partir de ese ejemplo y configura las credenciales y URLs necesarias para los servicios utilizados por la aplicación.
 
 Nunca deben subirse credenciales reales al repositorio.
 
 Entre las variables utilizadas se encuentran:
 
-```text
-NODE_ENV
-DATABASE_URL
-DIRECT_URL
-MONGO_URI
-JWT_SECRET
-JWT_EXPIRES_IN
+\`\`\`text
+
+NODE\_ENV
+
+DATABASE\_URL
+
+DIRECT\_URL
+
+MONGO\_URI
+
+JWT\_SECRET
+
+JWT\_EXPIRES\_IN
+
 PORT
-FRONTEND_URL
-CLOUDINARY_CLOUD_NAME
-CLOUDINARY_API_KEY
-CLOUDINARY_API_SECRET
-RESEND_API_KEY
-EMAIL_FROM
-STRIPE_SECRET_KEY
-STRIPE_WEBHOOK_SECRET
-```
+
+FRONTEND\_URL
+
+CLOUDINARY\_CLOUD\_NAME
+
+CLOUDINARY\_API\_KEY
+
+CLOUDINARY\_API\_SECRET
+
+RESEND\_API\_KEY
+
+EMAIL\_FROM
+
+STRIPE\_SECRET\_KEY
+
+STRIPE\_WEBHOOK\_SECRET
+
+\`\`\`
 
 El valor utilizado actualmente como referencia para la duración del JWT es:
 
-```env
-JWT_EXPIRES_IN=7d
-```
+\`\`\`env
 
-Las claves y credenciales del archivo `.env.example` son únicamente placeholders y deben sustituirse localmente.
+JWT\_EXPIRES\_IN=7d
 
-## 4. Base de datos
+\`\`\`
+
+Las claves y credenciales del archivo \`.env.example\` son únicamente placeholders y deben sustituirse localmente.
+
+**## 4. Base de datos**
 
 Aplicar las migraciones Prisma correspondientes antes de iniciar la aplicación.
 
-## 5. Desarrollo
+**## 5. Desarrollo**
 
-```bash
+\`\`\`bash
+
 npm run dev
-```
+
+\`\`\`
 
 El servidor se inicia mediante:
 
-```text
+\`\`\`text
+
 node --watch src/server.js
-```
 
-## 6. Producción
+\`\`\`
 
-```bash
+**## 6. Producción**
+
+\`\`\`bash
+
 npm start
-```
 
----
+\`\`\`
 
-# Scripts
+**---**
 
-| Comando | Descripción |
-|---|---|
-| `npm run dev` | Inicia el servidor en modo desarrollo |
-| `npm start` | Inicia el servidor |
-| `npm test` | Ejecuta Jest y Supertest |
+**# Scripts**
 
----
+\| Comando | Descripción |
 
-# CORS y cookies
+\|---|---|
+
+\| \`npm run dev\` | Inicia el servidor en modo desarrollo |
+
+\| \`npm start\` | Inicia el servidor |
+
+\| \`npm test\` | Ejecuta Jest y Supertest |
+
+**---**
+
+**# CORS y cookies**
 
 La aplicación utiliza CORS con credenciales.
 
 El origen permitido se configura mediante:
 
-```env
-FRONTEND_URL=http://localhost:5173
-```
+\`\`\`env
+
+FRONTEND\_URL=http\://localhost:5173
+
+\`\`\`
 
 En desarrollo normalmente apunta al servidor de Vite.
 
 En producción está configurado para el frontend desplegado:
 
-```text
-https://rilmar-tech-frontend.vercel.app
-```
+\`\`\`text
 
-La autenticación entre el frontend de Vercel y el backend de Render utiliza cookies compatibles con HTTPS y peticiones cross-site.
+https\://aesthetic-halva-6e8e80.netlify.app
+
+\`\`\`
+
+La autenticación entre el frontend de Netlify y el backend de Render utiliza cookies compatibles con HTTPS y peticiones cross-site.
 
 En producción la cookie de autenticación utiliza las opciones necesarias para el envío seguro de credenciales entre ambos dominios.
 
----
+**---**
 
-# Despliegue
+**# Despliegue**
 
 Frontend y backend se despliegan de forma independiente.
 
-## Frontend
+**## Frontend**
 
-```text
-https://rilmar-tech-frontend.vercel.app
-```
+\`\`\`text
 
-Desplegado mediante **Vercel**.
+https\://aesthetic-halva-6e8e80.netlify.app
 
-## Backend
+\`\`\`
 
-```text
-https://backend-modulo2-api.onrender.com
-```
+Desplegado mediante **\*\*Netlify\*\***.
 
-Desplegado mediante **Render**.
+**## Backend**
 
-## Stripe webhook
+\`\`\`text
+
+https\://backend-modulo2-api.onrender.com
+
+\`\`\`
+
+Desplegado mediante **\*\*Render\*\***.
+
+**## Stripe webhook**
 
 El endpoint configurado para recibir eventos de Stripe es:
 
-```text
-https://backend-modulo2-api.onrender.com/api/payments/webhook
-```
+\`\`\`text
+
+https\://backend-modulo2-api.onrender.com/api/payments/webhook
+
+\`\`\`
 
 Stripe firma los eventos enviados a este endpoint y el backend verifica la firma antes de procesarlos.
 
-El flujo desplegado ha sido validado utilizando **Stripe en modo de prueba**, incluyendo la recepción satisfactoria del evento:
+El flujo desplegado ha sido validado utilizando **\*\*Stripe en modo de prueba\*\***, incluyendo la recepción satisfactoria del evento:
 
-```text
+\`\`\`text
+
 checkout.session.completed
-```
+
+\`\`\`
 
 El webhook permite actualizar el estado del pedido independientemente de la navegación posterior del usuario en el frontend.
 
-## Servicios de producción
+**## Servicios de producción**
 
 La aplicación desplegada integra:
 
-- Vercel
-- Render
-- PostgreSQL
-- MongoDB Atlas
-- Cloudinary
-- Resend
-- Stripe
+\- Netlify
 
----
+\- Render
 
-# Frontend
+\- PostgreSQL
+
+\- MongoDB Atlas
+
+\- Cloudinary
+
+\- Resend
+
+\- Stripe
+
+**---**
+
+**# Frontend**
 
 El frontend de Rilmar Tech se desarrolla en un repositorio independiente:
 
-**Rilmar Tech Frontend**
+**\*\*Rilmar Tech Frontend\*\***
 
-https://github.com/J-Mateo/rilmar-tech-frontend
+https\://github.com/J-Mateo/rilmar-tech-frontend
 
 Está construido con React, Vite, Redux Toolkit y React Router.
 
 Frontend y backend constituyen conjuntamente la aplicación full-stack Rilmar Tech.
 
----
+**---**
 
-# Funcionalidades implementadas
+**# Funcionalidades implementadas**
 
-- ✅ Registro
-- ✅ Login
-- ✅ Logout
-- ✅ JWT mediante cookie HTTP-Only
-- ✅ Persistencia de sesión
-- ✅ Roles `USER` y `ADMIN`
-- ✅ Perfil autenticado
-- ✅ Política fuerte de contraseñas
-- ✅ Recuperación de contraseña
-- ✅ Tokens seguros y de un solo uso
-- ✅ Invalidación de sesiones anteriores
-- ✅ Rate limiting
-- ✅ Catálogo público
-- ✅ Búsqueda insensible a acentos
-- ✅ Filtros
-- ✅ Ordenación
-- ✅ Paginación
-- ✅ CRUD administrativo de productos
-- ✅ Múltiples imágenes
-- ✅ Cloudinary
-- ✅ Carrito persistente
-- ✅ Sincronización con carrito de invitado
-- ✅ Wishlist persistente
-- ✅ Reviews
-- ✅ Checkout
-- ✅ Stripe Checkout
-- ✅ Webhooks de Stripe
-- ✅ Integridad transaccional
-- ✅ Control de stock
-- ✅ Protección frente a overselling
-- ✅ Pedidos
-- ✅ Historial de pedidos
-- ✅ Administración de pedidos
-- ✅ Administración de usuarios
-- ✅ Snapshots comerciales
-- ✅ Importes mediante Decimal
-- ✅ Alertas de reposición
-- ✅ Emails transaccionales
-- ✅ PostgreSQL
-- ✅ Prisma
-- ✅ MongoDB Atlas
-- ✅ Mongoose
-- ✅ Row Level Security en `RestockAlert`
-- ✅ Swagger / OpenAPI
-- ✅ Jest
-- ✅ Supertest
-- ✅ Integración completa con frontend React
-- ✅ Backend desplegado en Render
-- ✅ Frontend desplegado en Vercel
-- ✅ Webhook de Stripe desplegado y validado
+\- ✅ Registro
 
----
+\- ✅ Login
 
-# Repositorios
+\- ✅ Logout
 
-### Backend
+\- ✅ JWT mediante cookie HTTP-Only
 
-https://github.com/J-Mateo/modulo2
+\- ✅ Persistencia de sesión
 
-### Frontend
+\- ✅ Roles \`USER\` y \`ADMIN\`
 
-https://github.com/J-Mateo/rilmar-tech-frontend
+\- ✅ Perfil autenticado
 
----
+\- ✅ Política fuerte de contraseñas
 
-# Autora
+\- ✅ Recuperación de contraseña
 
-**Jessica Mateo**
+\- ✅ Tokens seguros y de un solo uso
+
+\- ✅ Invalidación de sesiones anteriores
+
+\- ✅ Rate limiting
+
+\- ✅ Catálogo público
+
+\- ✅ Búsqueda insensible a acentos
+
+\- ✅ Filtros
+
+\- ✅ Ordenación
+
+\- ✅ Paginación
+
+\- ✅ CRUD administrativo de productos
+
+\- ✅ Múltiples imágenes
+
+\- ✅ Cloudinary
+
+\- ✅ Carrito persistente
+
+\- ✅ Sincronización con carrito de invitado
+
+\- ✅ Wishlist persistente
+
+\- ✅ Reviews
+
+\- ✅ Checkout
+
+\- ✅ Stripe Checkout
+
+\- ✅ Webhooks de Stripe
+
+\- ✅ Integridad transaccional
+
+\- ✅ Control de stock
+
+\- ✅ Protección frente a overselling
+
+\- ✅ Pedidos
+
+\- ✅ Historial de pedidos
+
+\- ✅ Administración de pedidos
+
+\- ✅ Administración de usuarios
+
+\- ✅ Snapshots comerciales
+
+\- ✅ Importes mediante Decimal
+
+\- ✅ Alertas de reposición
+
+\- ✅ Emails transaccionales
+
+\- ✅ PostgreSQL
+
+\- ✅ Prisma
+
+\- ✅ MongoDB Atlas
+
+\- ✅ Mongoose
+
+\- ✅ Row Level Security en \`RestockAlert\`
+
+\- ✅ Swagger / OpenAPI
+
+\- ✅ Jest
+
+\- ✅ Supertest
+
+\- ✅ Integración completa con frontend React
+
+\- ✅ Backend desplegado en Render
+
+\- ✅ Frontend desplegado en Netlify
+
+\- ✅ Webhook de Stripe desplegado y validado
+
+**---**
+
+**# Repositorios**
+
+**### Backend**
+
+https\://github.com/J-Mateo/modulo2
+
+**### Frontend**
+
+https\://github.com/J-Mateo/rilmar-tech-frontend
+
+**---**
+
+**# Autora**
+
+**\*\*Jessica Mateo\*\***
 
 Proyecto desarrollado individualmente como aplicación full-stack de comercio electrónico.
 
 El proyecto pone especial atención en:
 
-- Arquitectura modular
-- Seguridad de autenticación
-- Separación de responsabilidades
-- Integridad transaccional
-- Control de concurrencia
-- Persistencia híbrida PostgreSQL / MongoDB
-- Integración con servicios externos
-- Experiencia de compra completa
-- Testing automatizado
-- Despliegue y funcionamiento end-to-end
+\- Arquitectura modular
+
+\- Seguridad de autenticación
+
+\- Separación de responsabilidades
+
+\- Integridad transaccional
+
+\- Control de concurrencia
+
+\- Persistencia híbrida PostgreSQL / MongoDB
+
+\- Integración con servicios externos
+
+\- Experiencia de compra completa
+
+\- Testing automatizado
+
+\- Despliegue y funcionamiento end-to-end
