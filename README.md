@@ -5,7 +5,7 @@ Backend de una aplicación **full-stack de comercio electrónico** orientada a p
 Autenticación segura · Catálogo · Carrito · Wishlist · Stripe · Pedidos · Administración · Emails · PostgreSQL · MongoDB
 
 [Frontend](https://aesthetic-halva-6e8e80.netlify.app) ·
-[API](https://backend-modulo2-api.onrender.com) ·
+[Health API](https://backend-modulo2-api.onrender.com/health) ·
 [Swagger](https://backend-modulo2-api.onrender.com/api/docs) ·
 [Repositorio Frontend](https://github.com/J-Mateo/rilmar-tech-frontend)
 
