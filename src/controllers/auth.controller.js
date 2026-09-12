@@ -11,16 +11,21 @@ import {
 const AUTH_COOKIE_NAME =
   'access_token';
 
+const isProduction =
+  env.NODE_ENV ===
+  'production';
+
 const authCookieOptions = {
   httpOnly:
     true,
 
   secure:
-    env.NODE_ENV ===
-    'production',
+    isProduction,
 
   sameSite:
-    'lax',
+    isProduction
+      ? 'none'
+      : 'lax',
 
   path:
     '/',
@@ -37,6 +42,8 @@ const setAuthCookie = (
       ...authCookieOptions,
 
       maxAge:
+        7 *
+        24 *
         60 *
         60 *
         1000,
