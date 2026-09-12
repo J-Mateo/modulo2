@@ -4,6 +4,22 @@ Backend de **Rilmar Tech**, una aplicación full-stack de comercio electrónico 
 
 La API gestiona autenticación, usuarios, catálogo, carrito, wishlist, reseñas, checkout con Stripe, pedidos, administración, emails transaccionales y persistencia híbrida mediante PostgreSQL y MongoDB.
 
+## Demo
+
+### Frontend
+
+https://rilmar-tech-frontend.vercel.app
+
+### Backend API
+
+https://backend-modulo2-api.onrender.com
+
+### Documentación Swagger
+
+https://backend-modulo2-api.onrender.com/api-docs
+
+> El backend está desplegado en Render. Al utilizar una instancia gratuita, el primer acceso después de un periodo de inactividad puede tardar unos segundos mientras el servicio se reactiva.
+
 ---
 
 ## Tecnologías
@@ -237,13 +253,13 @@ Permite:
 
 La búsqueda de productos soporta texto **insensible a acentos**, utilizando la extensión `unaccent` de PostgreSQL.
 
-Ejemplo conceptual:
+Ejemplo:
 
 ```text
 lampara
 ```
 
-puede encontrar resultados que contengan:
+puede encontrar:
 
 ```text
 Lámpara Inteligente
@@ -315,7 +331,7 @@ Los datos comerciales relevantes, como precio, disponibilidad y stock, se valida
 
 # Checkout y Stripe
 
-El proyecto integra un flujo real de pago mediante **Stripe Checkout**.
+El proyecto integra un flujo de pago mediante **Stripe Checkout**.
 
 La sesión de Stripe se crea exclusivamente desde el backend.
 
@@ -521,7 +537,7 @@ La consulta del detalle de un pedido está limitada al usuario propietario del m
 
 Los administradores disponen de endpoints específicos para consultar los pedidos de la tienda.
 
-La API permite utilizar esta información para:
+La API permite:
 
 - Listar pedidos
 - Consultar pedidos
@@ -539,7 +555,7 @@ La autorización se realiza mediante el rol `ADMIN`.
 
 El backend expone endpoints administrativos para consultar usuarios registrados.
 
-La administración puede utilizar esta información para:
+La administración puede:
 
 - Listar usuarios
 - Buscar por nombre o email
@@ -555,13 +571,13 @@ Los datos sensibles, como hashes de contraseñas, no se exponen en las respuesta
 
 La lista de deseos se almacena mediante MongoDB Atlas y está vinculada al usuario autenticado.
 
-Permite:
+Permite consultar la wishlist mediante:
 
 ```http
 GET /api/wishlist
 ```
 
-y operaciones de toggle mediante el identificador de producto.
+y realizar operaciones de toggle mediante el identificador de producto.
 
 La wishlist persiste entre sesiones y no depende del almacenamiento local del navegador.
 
@@ -843,49 +859,33 @@ Tests:       98 passed, 98 total
 
 # Evidencias del proyecto
 
-Las siguientes capturas muestran algunos de los principales flujos e integraciones del backend.
+Las siguientes capturas muestran los principales componentes técnicos y flujos del backend.
 
-## API documentada con Swagger
+## API y persistencia
 
-Vista de la API desplegada y documentada mediante Swagger / OpenAPI.
+Persistencia documental mediante MongoDB Atlas y documentación de la API mediante Swagger / OpenAPI.
 
-![Swagger / OpenAPI](docs/swagger-production.png)
+![API y persistencia](docs/api-data-overview.png)
 
 ## Autenticación
 
-Login realizado contra la API con respuesta satisfactoria.
+Login realizado contra la API con respuesta satisfactoria y sesión gestionada mediante cookie HTTP-Only.
 
-![Login API](docs/auth-login.png)
+![Autenticación API](docs/auth-login.png)
 
-## Persistencia documental
+## Flujo de pago con Stripe
 
-Reviews almacenadas en MongoDB Atlas mediante Mongoose.
+Flujo completo de checkout: creación de la sesión desde la API, redirección a Stripe Checkout, confirmación del pedido y recepción del evento `checkout.session.completed` mediante el webhook del backend.
 
-![Reviews en MongoDB Atlas](docs/mongodb-reviews.png)
+![Flujo de pago con Stripe](docs/payment-flow.png)
 
-## Creación del checkout
+La captura corresponde al entorno desplegado utilizando **Stripe en modo de prueba**. No representa un cobro real en modo live.
 
-El backend valida la operación, crea el pedido y devuelve la URL de la sesión de Stripe Checkout.
+## Despliegue en producción
 
-![Checkout API](docs/checkout-api.png)
+Backend desplegado en Render y ejecutándose mediante la configuración de producción.
 
-## Stripe Checkout
-
-Sesión de pago generada por el backend y procesada en la página segura de Stripe.
-
-![Stripe Checkout](docs/stripe-checkout.png)
-
-## Pago completado
-
-Transacción de prueba completada correctamente y registrada en Stripe.
-
-![Pago completado en Stripe](docs/stripe-payment.png)
-
-## Despliegue
-
-Backend desplegado como servicio web.
-
-![Backend desplegado](docs/render-deploy.png)
+![Backend desplegado en Render](docs/render-production-deploy.png)
 
 ---
 
@@ -978,11 +978,11 @@ npm start
 
 ---
 
-# CORS
+# CORS y cookies
 
 La aplicación utiliza CORS con credenciales.
 
-El origen del frontend debe configurarse mediante:
+El origen permitido se configura mediante:
 
 ```env
 FRONTEND_URL=http://localhost:5173
@@ -990,9 +990,15 @@ FRONTEND_URL=http://localhost:5173
 
 En desarrollo normalmente apunta al servidor de Vite.
 
-En producción debe sustituirse por la URL real del frontend desplegado.
+En producción está configurado para el frontend desplegado:
 
-La configuración final de producción debe mantener coherencia entre CORS, cookies y HTTPS para que la autenticación basada en credenciales funcione correctamente entre frontend y backend.
+```text
+https://rilmar-tech-frontend.vercel.app
+```
+
+La autenticación entre el frontend de Vercel y el backend de Render utiliza cookies compatibles con HTTPS y peticiones cross-site.
+
+En producción la cookie de autenticación utiliza las opciones necesarias para el envío seguro de credenciales entre ambos dominios.
 
 ---
 
@@ -1000,28 +1006,51 @@ La configuración final de producción debe mantener coherencia entre CORS, cook
 
 Frontend y backend se despliegan de forma independiente.
 
-La configuración de producción requiere:
+## Frontend
 
-- URL pública del backend
-- URL pública del frontend
-- PostgreSQL accesible desde el backend
+```text
+https://rilmar-tech-frontend.vercel.app
+```
+
+Desplegado mediante **Vercel**.
+
+## Backend
+
+```text
+https://backend-modulo2-api.onrender.com
+```
+
+Desplegado mediante **Render**.
+
+## Stripe webhook
+
+El endpoint configurado para recibir eventos de Stripe es:
+
+```text
+https://backend-modulo2-api.onrender.com/api/payments/webhook
+```
+
+Stripe firma los eventos enviados a este endpoint y el backend verifica la firma antes de procesarlos.
+
+El flujo desplegado ha sido validado utilizando **Stripe en modo de prueba**, incluyendo la recepción satisfactoria del evento:
+
+```text
+checkout.session.completed
+```
+
+El webhook permite actualizar el estado del pedido independientemente de la navegación posterior del usuario en el frontend.
+
+## Servicios de producción
+
+La aplicación desplegada integra:
+
+- Vercel
+- Render
+- PostgreSQL
 - MongoDB Atlas
 - Cloudinary
 - Resend
 - Stripe
-- CORS configurado para el frontend real
-- Cookies compatibles con HTTPS y el entorno de producción
-- Endpoint de webhook de Stripe apuntando al backend desplegado
-
-El endpoint de Stripe en producción debe configurarse en Stripe para enviar los eventos al backend, utilizando una URL con esta estructura:
-
-```text
-https://TU-BACKEND/api/payments/webhook
-```
-
-El secreto correspondiente al webhook de producción debe configurarse mediante `STRIPE_WEBHOOK_SECRET`.
-
-Las URLs públicas definitivas se incorporarán a esta documentación una vez completado y validado el despliegue.
 
 ---
 
@@ -1088,6 +1117,9 @@ Frontend y backend constituyen conjuntamente la aplicación full-stack Rilmar Te
 - ✅ Jest
 - ✅ Supertest
 - ✅ Integración completa con frontend React
+- ✅ Backend desplegado en Render
+- ✅ Frontend desplegado en Vercel
+- ✅ Webhook de Stripe desplegado y validado
 
 ---
 
@@ -1120,3 +1152,4 @@ El proyecto pone especial atención en:
 - Integración con servicios externos
 - Experiencia de compra completa
 - Testing automatizado
+- Despliegue y funcionamiento end-to-end
