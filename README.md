@@ -240,13 +240,13 @@ La búsqueda de productos soporta texto **insensible a acentos**, utilizando la 
 Ejemplo conceptual:
 
 ```text
-telefono
+lampara
 ```
 
 puede encontrar resultados que contengan:
 
 ```text
-teléfono
+Lámpara Inteligente
 ```
 
 sin requerir que el usuario escriba exactamente los mismos acentos.
